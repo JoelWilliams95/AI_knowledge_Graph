@@ -1,0 +1,64 @@
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+.app-root { display:flex; flex-direction:column; height:100%; }
+.app-header { padding: 16px; background: #0d47a1; color: white; }
+.app-main { display: grid; grid-template-columns: 280px 1fr 300px; gap: 8px; padding: 8px; height: calc(100% - 72px); }
+.left-pane { background: #f5f5f5; padding: 12px; overflow:auto; }
+.right-pane { background: #fafafa; padding: 12px; overflow:auto; }
+.graph-pane { background: #fff; border: 1px solid #ddd; min-height: 400px; display: flex; align-items: center; justify-content: center; }
+.info-panel { font-family: monospace; font-size: 13px; }
+.error-message { background: rgba(255, 255, 255, 0.2); padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 14px; }
+.backend-status { margin-top: 20px; padding: 12px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; }
+.backend-status pre { background: #f1f1f1; padding: 8px; border-radius: 4px; overflow: auto; font-size: 12px; }
+.backend-status button { padding: 8px 16px; background: #1976d2; color: white; border: none; border-radius: 4px; margin-top: 12px; cursor: pointer; }
+.backend-status button:hover { background: #0d47a1; }
+.loading { color: #666; font-size: 16px; }
+
+/* Search Interface Styles */
+.search-interface { margin-bottom: 20px; }
+.search-form { margin-bottom: 15px; }
+.search-controls { display: flex; flex-direction: column; gap: 8px; }
+.search-type-select, .search-input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+.search-input { flex: 1; }
+.search-controls button { padding: 8px 16px; background: #1976d2; color: white; border: none; border-radius: 4px; cursor: pointer; }
+.search-controls button:hover:not(:disabled) { background: #0d47a1; }
+.search-controls button:disabled { background: #ccc; cursor: not-allowed; }
+
+.action-buttons { display: flex; gap: 8px; margin-bottom: 15px; }
+.secondary-btn { padding: 6px 12px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; }
+.secondary-btn:hover { background: #e0e0e0; }
+
+.papers-section h4 { margin: 15px 0 10px 0; color: #333; }
+.papers-list { max-height: 300px; overflow-y: auto; }
+.paper-item { padding: 12px; margin-bottom: 8px; border: 1px solid #e0e0e0; border-radius: 4px; background: white; }
+.paper-item.selected { border-color: #1976d2; background: #f3f7ff; }
+.paper-item h5 { margin: 0 0 8px 0; color: #1976d2; font-size: 14px; }
+.paper-authors { margin: 4px 0; font-size: 12px; color: #666; }
+.paper-year, .paper-journal { font-size: 11px; color: #888; }
+.paper-actions { margin-top: 8px; }
+.view-graph-btn { padding: 4px 8px; background: #1976d2; color: white; border: none; border-radius: 3px; font-size: 11px; cursor: pointer; }
+.view-graph-btn:hover { background: #0d47a1; }
+
+.upload-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #e0e0e0; }
+.toggle-upload-btn { width: 100%; padding: 8px; background: #f8f8f8; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; }
+.toggle-upload-btn:hover { background: #e8e8e8; }
+
+/* Info Panel Styles */
+.search-info { padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid #e0e0e0; }
+.search-info h4 { margin: 0 0 8px 0; color: #1976d2; }
+.node-details h3 { color: #1976d2; margin: 0 0 8px 0; }
+.node-properties h4 { margin: 10px 0 5px 0; }
+.help-text { color: #666; font-size: 13px; }
+.help-text p { margin: 5px 0; }
+
+@media (max-width: 768px) {
+  .search-controls { flex-direction: column; }
+  .action-buttons { flex-direction: column; }
+  .papers-list { max-height: 200px; }
+}
+
+@media (max-width: 768px) {
+  .app-main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; height: calc(100% - 72px); }
+  .left-pane, .right-pane { height: auto; }
+  .right-pane { display: none; }
+}
