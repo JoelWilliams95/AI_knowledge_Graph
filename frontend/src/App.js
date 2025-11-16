@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import UploadForm from './components/UploadForm';
 import SearchInterface from './components/SearchInterface';
 import GraphViewer from './components/GraphViewer';
-import LoadingScreen from './components/LoadingScreen';
+import Header from './components/Header';
+import Modal from './components/Modal';
 import axios from 'axios';
-import './styles.css';
 
 const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
 
@@ -15,6 +15,26 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [searchResults, setSearchResults] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('theme') || 'dark';
+    } catch (e) {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+    } catch (e) {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
 
   const fetchGraph = async () => {
     setLoading(true);
@@ -41,13 +61,39 @@ export default function App() {
     fetchGraph();
   }, []);
 
+  useEffect(() => {
+    if (error) {
+      setShowErrorModal(true);
+    }
+  }, [error]);
+
   return (
     <div className="app-root">
-      {loading && <LoadingScreen />}
-      <header className="app-header">
-        <h1>Research Knowledge Graph</h1>
-        {error && <div className="error-message">{error}</div>}
-      </header>
+      <Header onRefresh={fetchGraph} onOpenProfile={() => setShowProfileModal(true)} theme={theme} onToggleTheme={toggleTheme} />
+      <Modal 
+        isOpen={showErrorModal} 
+        onClose={() => setShowErrorModal(false)} 
+        message={error} 
+        type="error" 
+        duration={5000} 
+      />
+
+      <Modal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        type="profile"
+        // no duration -> modal stays until closed
+      >
+        <div style={{minWidth: 280}}>
+          <h3 style={{marginTop:0}}>User Profile</h3>
+          <p><strong>Name:</strong> Demo User</p>
+          <p><strong>Email:</strong> demo@example.com</p>
+          <div style={{marginTop:12, display:'flex', gap:8, justifyContent:'flex-end'}}>
+            <button onClick={() => setShowProfileModal(false)} className="secondary-btn">Close</button>
+            <button className="view-graph-btn">Edit</button>
+          </div>
+        </div>
+      </Modal>
       <main className="app-main">
         <aside className="left-pane">
           {!error ? (
