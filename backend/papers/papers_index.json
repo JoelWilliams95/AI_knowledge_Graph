@@ -1,0 +1,26 @@
+{
+  "papers": [
+    {
+      "paper_id": "a678e981-baca-4c19-b5de-0e0a171fcf0b",
+      "filename": "article.pdf",
+      "title": "Mediterranean Smart Cities Conference (MSCC 2025)",
+      "authors": null,
+      "year": null,
+      "journal": null,
+      "upload_date": "2025-11-15T22:10:42.621858",
+      "text_length": 21147,
+      "pdf_path": "papers\\article.pdf"
+    },
+    {
+      "paper_id": "efbe0a70-96aa-4f92-be36-b7afdf096728",
+      "filename": "Neuronal Collaborative Filtering for Personalized Learning - Article.pdf",
+      "title": "Neuronal Collaborative Filtering for Personalized",
+      "authors": null,
+      "year": null,
+      "journal": null,
+      "upload_date": "2025-11-15T22:11:15.653850",
+      "text_length": 29487,
+      "pdf_path": "papers\\Neuronal Collaborative Filtering for Personalized Learning - Article.pdf"
+    }
+  ]
+}

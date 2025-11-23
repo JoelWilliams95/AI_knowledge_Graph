@@ -125,11 +125,11 @@ def get_graph(limit: int = 100):
                         "props": dict(node.items()),
                     }
             edges.append({
-                "id": str(r.id),
+                "id": str(getattr(r, "id", "")),
                 "source": n.get("id"),
                 "target": m.get("id"),
-                "label": type(r).__name__ if hasattr(r, "type") else r.type if hasattr(r, "type") else "RELATED_TO",
-+                "props": dict(r.items()),
+                "label": getattr(r, "type", "RELATED_TO"),
+                "props": dict(r.items()) if hasattr(r, "items") else {},
             })
         return list(nodes.values()), edges
 
@@ -264,10 +264,9 @@ def get_papers_by_entity(entity_id: str) -> List[Dict[str, Any]]:
 
 
 def get_graph_by_search(query: str, limit: int = 100):
-    """Get graph data filtered by search query"""
     driver = get_driver()
     with driver.session() as session:
-        # First find papers matching the query
+
         papers_cypher = """
         MATCH (p:Paper)
         WHERE toLower(p.title) CONTAINS toLower($query)
@@ -275,34 +274,36 @@ def get_graph_by_search(query: str, limit: int = 100):
            OR toLower(p.authors) CONTAINS toLower($query)
         RETURN collect(p.paper_id) as paper_ids
         """
-        
-        papers_result = session.run(papers_cypher, query=query)
+
+        # FIX: parameters must be passed as dict
+        papers_result = session.run(papers_cypher, {"query": query})
         paper_ids = papers_result.single()["paper_ids"] if papers_result.peek() else []
-        
+
         if not paper_ids:
             return [], []
-        
-        # Get entities and relationships from matching papers
+
         graph_cypher = """
         MATCH (n)-[r]-(m)
         WHERE n.paper_id IN $paper_ids OR m.paper_id IN $paper_ids
         RETURN n, r, m
         LIMIT $limit
         """
-        
-        graph_result = session.run(graph_cypher, paper_ids=paper_ids, limit=limit)
+
+        # FIX
+        graph_result = session.run(graph_cypher, {"paper_ids": paper_ids, "limit": limit})
+
         nodes = {}
         edges = []
-        
+
         for record in graph_result:
             n = record["n"]
-            m = record["m"]  
+            m = record["m"]
             r = record["r"]
-            
+
             for node in (n, m):
                 if "Paper" in list(node.labels):
-                    continue  # Skip paper nodes in visualization
-                    
+                    continue
+
                 nid = node.get("id")
                 if nid and nid not in nodes:
                     nodes[nid] = {
@@ -311,8 +312,7 @@ def get_graph_by_search(query: str, limit: int = 100):
                         "type": list(node.labels)[0] if list(node.labels) else "Entity",
                         "props": dict(node.items()),
                     }
-            
-            # Only add edges between entities (not involving papers)
+
             if ("Paper" not in list(n.labels) and "Paper" not in list(m.labels) and 
                 n.get("id") and m.get("id")):
                 edges.append({
@@ -322,5 +322,5 @@ def get_graph_by_search(query: str, limit: int = 100):
                     "label": r.type if hasattr(r, "type") else "RELATED_TO",
                     "props": dict(r.items()),
                 })
-        
+
         return list(nodes.values()), edges

@@ -1,70 +1,75 @@
+# papers_manager.py
 import os
+import uuid
 import json
 from pathlib import Path
-from typing import List, Dict, Any
 from datetime import datetime
-import uuid
+from typing import List, Dict, Any
 
 from .pdf_utils import extract_text_from_pdf
 from .nlp import process_text_to_graph
 from .neo4j_driver import upsert_paper, upsert_graph_with_paper
 
-# Directory containing pre-loaded research papers
 PAPERS_DIR = os.getenv("PAPERS_DIR", "./papers")
 PAPERS_INDEX_FILE = os.path.join(PAPERS_DIR, "papers_index.json")
 
+
 def ensure_papers_directory():
-    """Create papers directory and index if they don't exist"""
     Path(PAPERS_DIR).mkdir(parents=True, exist_ok=True)
     if not os.path.exists(PAPERS_INDEX_FILE):
-        with open(PAPERS_INDEX_FILE, 'w') as f:
+        with open(PAPERS_INDEX_FILE, "w") as f:
             json.dump({"papers": []}, f, indent=2)
 
+
 def load_papers_index() -> Dict[str, Any]:
-    """Load the papers index from JSON file"""
     ensure_papers_directory()
     try:
-        with open(PAPERS_INDEX_FILE, 'r') as f:
+        with open(PAPERS_INDEX_FILE, "r") as f:
             return json.load(f)
     except Exception:
         return {"papers": []}
 
+
 def save_papers_index(index: Dict[str, Any]):
-    """Save the papers index to JSON file"""
     ensure_papers_directory()
-    with open(PAPERS_INDEX_FILE, 'w') as f:
+    with open(PAPERS_INDEX_FILE, "w") as f:
         json.dump(index, f, indent=2)
 
+
 def get_preloaded_papers() -> List[Dict[str, Any]]:
-    """Get list of all pre-loaded papers"""
     index = load_papers_index()
     return index.get("papers", [])
 
-def add_paper_to_collection(pdf_path: str, title: str = None, authors: str = None, 
-                           year: str = None, journal: str = None) -> str:
-    """Add a paper to the collection and process it"""
+
+def add_paper_to_collection(
+    pdf_path: str,
+    title: str = None,
+    authors: str = None,
+    year: str = None,
+    journal: str = None
+) -> str:
+    """Add a paper to the collection, process NLP, and store in Neo4j"""
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
-    
+
     # Generate unique paper ID
     paper_id = str(uuid.uuid4())
     filename = os.path.basename(pdf_path)
-    
+
     # Extract text from PDF
     text = extract_text_from_pdf(pdf_path)
     if not text.strip():
         raise ValueError("Could not extract text from PDF")
-    
-    # If no title provided, use filename or extract from first lines
+
+    # Determine title
     if not title:
-        title = filename.replace('.pdf', '').replace('_', ' ').replace('-', ' ').title()
-        # Try to get title from first non-empty lines
-        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        title = filename.replace(".pdf", "").replace("_", " ").replace("-", " ").title()
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
         if lines:
             potential_title = lines[0]
-            if len(potential_title) < 200 and not potential_title.lower().startswith('abstract'):
+            if len(potential_title) < 200 and not potential_title.lower().startswith("abstract"):
                 title = potential_title
-    
+
     # Create paper metadata
     paper_metadata = {
         "paper_id": paper_id,
@@ -77,35 +82,35 @@ def add_paper_to_collection(pdf_path: str, title: str = None, authors: str = Non
         "text_length": len(text),
         "pdf_path": pdf_path
     }
-    
-    # Process text with NLP
+
+    # Process NLP to extract nodes & edges
     nodes, edges = process_text_to_graph(text)
-    
+
     # Store in Neo4j
     upsert_paper(paper_id, filename, title, text, paper_metadata)
     upsert_graph_with_paper(paper_id, nodes, edges)
-    
-    # Update papers index
+
+    # Update local index
     index = load_papers_index()
     index["papers"].append(paper_metadata)
     save_papers_index(index)
-    
+
     return paper_id
 
+
 def process_papers_directory(papers_dir: str = None):
-    """Process all PDF files in a directory and add them to the collection"""
+    """Process all PDFs in a directory and add them to the collection"""
     if papers_dir is None:
         papers_dir = PAPERS_DIR
-    
+
     if not os.path.exists(papers_dir):
         print(f"Papers directory not found: {papers_dir}")
         return []
-    
+
     processed_papers = []
     pdf_files = list(Path(papers_dir).glob("*.pdf"))
-    
     print(f"Found {len(pdf_files)} PDF files to process...")
-    
+
     for pdf_file in pdf_files:
         try:
             print(f"Processing: {pdf_file.name}")
@@ -122,7 +127,7 @@ def process_papers_directory(papers_dir: str = None):
                 "status": "error",
                 "error": str(e)
             })
-    
+
     return processed_papers
 
 def initialize_demo_papers():
@@ -168,4 +173,4 @@ def initialize_demo_papers():
 if __name__ == "__main__":
     # Example usage
     initialize_demo_papers()
-    # process_papers_directory()
+    process_papers_directory()
