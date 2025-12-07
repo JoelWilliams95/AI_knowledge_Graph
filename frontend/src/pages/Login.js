@@ -1,14 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../services/AuthContext";
 import "../styles/auth.css";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { login } = useAuth();
 
   const submit = (e) => {
     e.preventDefault();
-    alert("Logged in!");
+    
+    if (!email.trim() || !password.trim()) {
+      alert("Please enter email and password");
+      return;
+    }
+
+    // Mock login - in production, call API
+    const mockToken = "mock-token-" + Date.now();
+    login(mockToken);
   };
 
 useEffect(() => {

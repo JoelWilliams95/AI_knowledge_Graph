@@ -3,115 +3,96 @@ import UploadForm from './components/UploadForm';
 import SearchInterface from './components/SearchInterface';
 import GraphViewer from './components/GraphViewer';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import Modal from './components/Modal';
-import axios from 'axios';
-
-const API_BASE = process.env.REACT_APP_API_BASE || 'http://localhost:8000';
+import { useGraphData } from './hooks/useGraphData';
+import { useTheme } from './hooks/useTheme';
+import { API_BASE } from './utils/constants';
 
 export default function App() {
-  const [graph, setGraph] = useState({ nodes: [], edges: [] });
+  const graphData = useGraphData();
+  const { theme, toggleTheme } = useTheme();
   const [selected, setSelected] = useState(null);
-  const [error, setError] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [searchResults, setSearchResults] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem('theme') || 'dark';
-    } catch (e) {
-      return 'dark';
-    }
-  });
 
   useEffect(() => {
-    try {
-      document.documentElement.setAttribute('data-theme', theme);
-      localStorage.setItem('theme', theme);
-    } catch (e) {
-      /* ignore */
-    }
-  }, [theme]);
-
-  const toggleTheme = () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
-
-  const fetchGraph = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await axios.get(`${API_BASE}/graph`);
-      setGraph(res.data);
-      setSearchResults(null);
-    } catch (err) {
-      console.error("Failed to fetch graph:", err);
-      setError(`Failed to connect to backend at ${API_BASE}. Make sure the FastAPI backend is running.`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearchResults = (nodes, edges, metadata) => {
-    setGraph({ nodes, edges });
-    setSearchResults(metadata);
-    setError(null);
-  };
-
-  useEffect(() => {
-    fetchGraph();
-  }, []);
-
-  useEffect(() => {
-    if (error) {
+    if (graphData.error) {
       setShowErrorModal(true);
     }
-  }, [error]);
+  }, [graphData.error]);
 
   return (
     <div className="app-root">
-      <Header onRefresh={fetchGraph} onOpenProfile={() => setShowProfileModal(true)} theme={theme} onToggleTheme={toggleTheme} />
-      <Modal 
-        isOpen={showErrorModal} 
-        onClose={() => setShowErrorModal(false)} 
-        message={error} 
-        type="error" 
-        duration={5000} 
+      <Header
+        onRefresh={graphData.fetchGraph}
+        onOpenProfile={() => setShowProfileModal(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+
+      <Modal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        message={graphData.error}
+        type="error"
+        duration={5000}
       />
 
       <Modal
         isOpen={showProfileModal}
         onClose={() => setShowProfileModal(false)}
         type="profile"
-        // no duration -> modal stays until closed
       >
-        <div style={{minWidth: 280}}>
-          <h3 style={{marginTop:0}}>User Profile</h3>
-          <p><strong>Name:</strong> Demo User</p>
-          <p><strong>Email:</strong> demo@example.com</p>
-          <div style={{marginTop:12, display:'flex', gap:8, justifyContent:'flex-end'}}>
-            <button onClick={() => setShowProfileModal(false)} className="secondary-btn">Close</button>
+        <div style={{ minWidth: 280 }}>
+          <h3 style={{ marginTop: 0 }}>User Profile</h3>
+          <p>
+            <strong>Name:</strong> Demo User
+          </p>
+          <p>
+            <strong>Email:</strong> demo@example.com
+          </p>
+          <div
+            style={{
+              marginTop: 12,
+              display: 'flex',
+              gap: 8,
+              justifyContent: 'flex-end',
+            }}
+          >
+            <button
+              onClick={() => setShowProfileModal(false)}
+              className="secondary-btn"
+            >
+              Close
+            </button>
             <button className="view-graph-btn">Edit</button>
           </div>
         </div>
       </Modal>
+
       <main className="app-main">
         <aside className="left-pane">
-          {!error ? (
+          {!graphData.error ? (
             <>
-              <SearchInterface onSearchResults={handleSearchResults} apiBase={API_BASE} />
-              
+              <SearchInterface
+                onSearchResults={graphData.handleSearchResults}
+                apiBase={API_BASE}
+              />
               <div className="upload-section">
-                <button 
-                  onClick={() => setShowUpload(!showUpload)} 
+                <button
+                  onClick={() => setShowUpload(!showUpload)}
                   className="toggle-upload-btn"
                 >
                   {showUpload ? 'Hide' : 'Add New Paper'}
                 </button>
-                
                 {showUpload && (
-                  <UploadForm 
-                    onProcessed={(nodes, edges) => setGraph({ nodes, edges })} 
-                    apiBase={API_BASE} 
+                  <UploadForm
+                    onProcessed={(nodes, edges) =>
+                      graphData.setGraph({ nodes, edges })
+                    }
+                    apiBase={API_BASE}
                   />
                 )}
               </div>
@@ -121,43 +102,63 @@ export default function App() {
               <h3>Backend not connected</h3>
               <p>To start the backend server:</p>
               <pre>
-                cd ../backend{'\n'}
-                python -m venv .venv{'\n'}
-                .\.venv\Scripts\Activate.ps1{'\n'}
-                pip install -r requirements.txt{'\n'}
-                python -m spacy download en_core_web_sm{'\n'}
-                uvicorn app.main:app --reload
+                {`cd ../backend
+python -m venv .venv
+.\\venv\\Scripts\\Activate.ps1
+pip install -r requirements.txt
+python -m spacy download en_core_web_sm
+uvicorn app.main:app --reload`}
               </pre>
-              <button onClick={fetchGraph}>Retry Connection</button>
+              <button onClick={graphData.fetchGraph}>Retry Connection</button>
             </div>
           )}
         </aside>
+
         <section className="graph-pane">
-         {loading ? (
-           <div className="loading">Loading graph data...</div>
-         ) : (
-          <GraphViewer graph={graph} onSelectNode={(n) => setSelected(n)} apiBase={API_BASE} />
-         )}
+          {graphData.loading ? (
+            <div className="loading">Loading graph data...</div>
+          ) : (
+            <GraphViewer
+              graph={graphData.graph}
+              onSelectNode={(n) => setSelected(n)}
+              apiBase={API_BASE}
+            />
+          )}
         </section>
+
         <aside className="right-pane">
           <div className="info-panel">
-            {searchResults && (
+            {graphData.searchResults && (
               <div className="search-info">
                 <h4>Search Results</h4>
-                {searchResults.query && <p><strong>Query:</strong> {searchResults.query}</p>}
-                {searchResults.type === 'papers' && searchResults.papers && (
-                  <p><strong>Found:</strong> {searchResults.papers.length} papers</p>
+                {graphData.searchResults.query && (
+                  <p>
+                    <strong>Query:</strong> {graphData.searchResults.query}
+                  </p>
                 )}
-                {searchResults.type === 'entities' && searchResults.entities && (
-                  <p><strong>Found:</strong> {searchResults.entities.length} entities</p>
-                )}
+                {graphData.searchResults.type === 'papers' &&
+                  graphData.searchResults.papers && (
+                    <p>
+                      <strong>Found:</strong>{' '}
+                      {graphData.searchResults.papers.length} papers
+                    </p>
+                  )}
+                {graphData.searchResults.type === 'entities' &&
+                  graphData.searchResults.entities && (
+                    <p>
+                      <strong>Found:</strong>{' '}
+                      {graphData.searchResults.entities.length} entities
+                    </p>
+                  )}
               </div>
             )}
-            
+
             {selected ? (
               <div className="node-details">
                 <h3>{selected.label}</h3>
-                <p><strong>Type:</strong> {selected.type}</p>
+                <p>
+                  <strong>Type:</strong> {selected.type}
+                </p>
                 <div className="node-properties">
                   <h4>Properties:</h4>
                   <pre>{JSON.stringify(selected.props, null, 2)}</pre>
@@ -172,6 +173,8 @@ export default function App() {
           </div>
         </aside>
       </main>
+
+      <Footer />
     </div>
   );
 }
