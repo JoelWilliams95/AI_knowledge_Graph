@@ -1,89 +1,159 @@
+# nlp.py  –  FIXED VERSION (copy-paste this entire file)
+
 import os
+import re
 import spacy
 from typing import List, Dict, Any, Tuple
-from transformers import pipeline
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM
 
-# Load spaCy model lazily
+# ------------------------------------------------------------------
+# 1. Load spaCy (small model is enough)
+# ------------------------------------------------------------------
 _nlp = None
-
-
 def get_spacy():
     global _nlp
     if _nlp is None:
-        try:
-            _nlp = spacy.load("en_core_web_sm")
-        except Exception:
-            # Informative fallback: user must download the model
-            raise RuntimeError("spaCy model 'en_core_web_sm' not found. Run: python -m spacy download en_core_web_sm")
+        _nlp = spacy.load("en_core_web_sm")
     return _nlp
 
+# ------------------------------------------------------------------
+# 2. REBEL model + safe triplet parser
+# ------------------------------------------------------------------
+_rebel = None
+_tokenizer = None
 
-def extract_entities(text: str) -> List[Dict[str, Any]]:
-    nlp = get_spacy()
-    doc = nlp(text)
-    entities = []
-    for ent in doc.ents:
-        entities.append({
-            "id": f"ent-{ent.start_char}-{ent.end_char}",
-            "name": ent.text,
-            "type": ent.label_,
-            "props": {"start": ent.start_char, "end": ent.end_char},
-        })
-    return entities
+def get_rebel():
+    global _rebel, _tokenizer
+    if _rebel is None:
+        model_name = "Babelscape/rebel-large"
+        _tokenizer = AutoTokenizer.from_pretrained(model_name)
+        _rebel = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+        _rebel.eval()
+    return _rebel, _tokenizer
 
+def clean_relation(text: str) -> str:
+    text = re.sub(r"_TRIPLETPROFILES.*$", "", text)        # ← add this
+    text = re.sub(r"^HAS_PART_TRIPLET.*", "HAS_PART", text) # ← add this
+    text = re.sub(r"[<>()\[\]{}|&*]", "", text.strip())
+    text = text.upper().replace(" ", "_")
+    return text or "RELATED_TO"
 
-def extract_relations(text: str) -> List[Dict[str, Any]]:
-    """A simple heuristic relation extractor: create relations between entities
-    that co-occur in the same sentence. This is a placeholder you can replace
-    with a Hugging Face relation extraction model for higher quality.
-    """
+def extract_triplets_safe(text: str) -> List[Dict[str, str]]:
+    triplets = []
+    relation = subject = object_ = ""
+    current = "x"
+    tokens = text.replace("<s>", "").replace("<pad>", "").replace("</s>", "").split()
+
+    for token in tokens:
+        if token == "<triplet>":
+            current = "t"
+            if relation:
+                triplets.append({"head": subject.strip(), "type": relation.strip(), "tail": object_.strip()})
+                relation = ""
+            subject = ""
+        elif token == "<subj>":
+            current = "s"
+            if relation:
+                triplets.append({"head": subject.strip(), "type": relation.strip(), "tail": object_.strip()})
+            object_ = ""
+        elif token == "<obj>":
+            current = "o"
+            relation = ""
+        else:
+            if current == "t":
+                subject += " " + token
+            elif current == "s":
+                object_ += " " + token
+            elif current == "o":
+                relation += " " + token
+
+    if subject and relation and object_:
+        triplets.append({"head": subject.strip(), "type": relation.strip(), "tail": object_.strip()})
+    return triplets
+
+def extract_relations_with_rebel(text: str) -> List[Dict[str, Any]]:
+    model, tokenizer = get_rebel()
     nlp = get_spacy()
     doc = nlp(text)
     relations = []
+
     for sent in doc.sents:
-        ents = [ent for ent in sent.ents]
-        # Pairwise relations
-        for i in range(len(ents)):
-            for j in range(i + 1, len(ents)):
-                a = ents[i]
-                b = ents[j]
-                relations.append({
-                    "source": f"ent-{a.start_char}-{a.end_char}",
-                    "target": f"ent-{b.start_char}-{b.end_char}",
-                    "label": "cooccurs_in_sentence",
-                    "props": {"sentence": sent.text.strip()},
-                })
+        sent_text = sent.text.strip()
+        if len(sent_text) < 10:
+            continue
+
+        inputs = tokenizer(sent_text, return_tensors="pt", truncation=True, max_length=512)
+        generated = model.generate(
+            inputs["input_ids"],
+            max_length=512,
+            num_beams=3,
+            early_stopping=True,
+        )
+        decoded = tokenizer.decode(generated[0], skip_special_tokens=False)
+        triplets = extract_triplets_safe(decoded)
+
+        for t in triplets:
+            rel_type = clean_relation(t["type"])
+            relations.append({
+                "source": t["head"],
+                "target": t["tail"],
+                "label": rel_type,
+                "props": {"sentence": sent_text[:200] + "..." if len(sent_text) > 200 else sent_text}
+            })
     return relations
 
-
-def advanced_relation_extraction(text: str, model_name: str = "Babelscape/rebel-large") -> List[Dict[str, Any]]:
-    """Optional: use a transformers pipeline or custom model to extract relations.
-    This function is a stub showing how you'd plug a Hugging Face model.
-    """
-    # Example: load a relation extraction pipeline if a suitable model is available
-    # NOTE: Many relation-extraction models require custom preprocessing and outputs.
-    try:
-        rel_pipe = pipeline("text-classification", model=model_name)
-    except Exception:
-        raise RuntimeError("Failed to load transformer pipeline for relation extraction")
-    # Use rel_pipe on sentences or candidate pairs and convert outputs to graph edges
-    return []
-
-
+# ------------------------------------------------------------------
+# 3. Final processing function (clean IDs, dedup, etc.)
+# ------------------------------------------------------------------
 def process_text_to_graph(text: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-    entities = extract_entities(text)
-    relations = extract_relations(text)
-    # Deduplicate entities by name
-    seen = {}
-    nodes = []
-    for e in entities:
-        key = e["name"].strip().lower()
-        if key in seen:
-            # prefer existing id
-            continue
-        seen[key] = e
-        nodes.append(e)
-    # Filter relations to only include known entities
-    valid_ids = {n["id"] for n in nodes}
-    edges = [r for r in relations if r["source"] in valid_ids and r["target"] in valid_ids]
+    # 1. Entities from spaCy
+    spacy_ents = {}
+    for ent in get_spacy()(text).ents:
+        norm = ent.text.strip().lower()
+        spacy_ents[norm] = {
+            "id": norm.replace(" ", "_"),
+            "name": ent.text.strip(),
+            "type": "MISC" if ent.label_ == "MISC" else ent.label_,
+            "props": {"start": ent.start_char, "end": ent.end_char}
+        }
+
+    # 2. Relations from REBEL
+    raw_relations = extract_relations_with_rebel(text)
+
+    # 3. Build final nodes & edges
+    node_dict = {}
+    edges = []
+
+    for rel in raw_relations:
+        src_norm = rel["source"].strip().lower()
+        tgt_norm = rel["target"].strip().lower()
+
+        src_id = src_norm.replace(" ", "_")
+        tgt_id = tgt_norm.replace(" ", "_")
+
+        # Node for source
+        if src_id not in node_dict:
+            node_dict[src_id] = spacy_ents.get(src_norm, {
+                "id": src_id,
+                "name": rel["source"].strip(),
+                "type": "Entity",
+                "props": {}
+            })
+        # Node for target
+        if tgt_id not in node_dict:
+            node_dict[tgt_id] = spacy_ents.get(tgt_norm, {
+                "id": tgt_id,
+                "name": rel["target"].strip(),
+                "type": "Entity",
+                "props": {}
+            })
+
+        edges.append({
+            "source": src_id,
+            "target": tgt_id,
+            "label": rel["label"],
+            "props": rel["props"]
+        })
+
+    nodes = list(node_dict.values())
     return nodes, edges
