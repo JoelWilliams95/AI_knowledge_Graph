@@ -9,24 +9,48 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const navigate = useNavigate();
 
-  const submit = (e) => {
-    e.preventDefault();
+const submit = async (e) => {
+  e.preventDefault();
 
-    if (!email.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
-      alert("Please fill all fields");
-      return;
-    }
+  if (!email.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
+    alert("Please fill all fields");
+    return;
+  }
 
-    if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+  if (password !== confirmPassword) {
+    alert("Passwords do not match!");
+    return;
+  }
+
+  try {
+    const response = await fetch("http://localhost:8000/register", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: email,
+        username: username,
+        password: password,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      alert(data.detail || "Registration failed ❌");
       return;
     }
 
     alert("Account created! Now login.");
     navigate("/login");
-  };
 
-  // SAME BACKGROUND ANIMATION AS LOGIN
+  } catch (error) {
+    console.error(error);
+    alert("⚠️ Server unreachable");
+  }
+};
+
   useEffect(() => {
     const canvas = document.getElementById("graph-bg");
     const ctx = canvas.getContext("2d");
@@ -103,7 +127,14 @@ export default function Register() {
           <p className="subtitle">Join our AI platform</p>
 
           <form onSubmit={submit}>
-
+<div className="input-group">
+  <input
+    type="text"
+    placeholder="Your username"
+    value={username}
+    onChange={(e) => setUsername(e.target.value)}
+  />
+</div>
             <div className="input-group">
               <input
                 type="email"

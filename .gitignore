@@ -1,9 +1,11 @@
 # Python
 __pycache__/
 *.py[cod]
+venv/
 *.env
 .venv/
-
+# Databases
+*.db
 # Node
 /frontend/node_modules/
 /frontend/build/
