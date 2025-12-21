@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import App from "./App";
+import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import { AuthProvider } from "./services/AuthContext";
@@ -19,6 +20,15 @@ root.render(
 
         <Route
           path="/"
+          element={
+            <ProtectedRoute>
+              <LandingPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <App />
