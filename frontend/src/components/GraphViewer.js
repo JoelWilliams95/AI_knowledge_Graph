@@ -6,6 +6,7 @@ import axios from 'axios';
 export default function GraphViewer({ graph, onSelectNode, apiBase }) {
   const cyRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
+  const lastPosRef = useRef(null);
 
   useEffect(() => {
     const m = window.matchMedia('(max-width: 768px)');
@@ -98,74 +99,59 @@ export default function GraphViewer({ graph, onSelectNode, apiBase }) {
   };
 
   // Handle when node is being dragged - reposition connected nodes
-  const handleDragFree = (evt) => {
-    if (!cyRef.current) return;
-    
-    const draggedNode = evt.target;
-    const draggedPos = draggedNode.position();
-    
-    // Get all connected nodes
-    const connectedNodes = draggedNode.neighborhood('node');
-    
-    // Apply physics-like effect to connected nodes
-    connectedNodes.forEach((node) => {
-      const currentPos = node.position();
-      
-      // Calculate direction from connected node to dragged node
-      const dx = draggedPos.x - currentPos.x;
-      const dy = draggedPos.y - currentPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance > 0) {
-        // Apply force based on distance (spring-like behavior)
-        const force = Math.min(0.3, 50 / distance); // Adjust force strength
-        const moveX = dx * force;
-        const moveY = dy * force;
-        
-        // Update position
-        node.position({
-          x: currentPos.x + moveX,
-          y: currentPos.y + moveY
-        });
-      }
-    });
-    
-    // Optionally save position
-    const nodeId = draggedNode.id();
-    const position = draggedNode.position();
-    savePositionToBackend(nodeId, position);
-  };
+const handleGrab = (evt) => {
+  const draggedNode = evt.target;
 
-  // Handle continuous dragging for real-time updates
-  const handleDrag = (evt) => {
-    if (!cyRef.current) return;
-    
-    const draggedNode = evt.target;
-    const draggedPos = draggedNode.position();
-    
-    // Get directly connected nodes only
-    const connectedNodes = draggedNode.neighborhood('node');
-    
-    // Apply lighter real-time effect during drag
-    connectedNodes.forEach((node) => {
-      const currentPos = node.position();
-      
-      const dx = draggedPos.x - currentPos.x;
-      const dy = draggedPos.y - currentPos.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance > 0 && distance < 200) { // Only affect nearby nodes
-        const force = Math.min(0.1, 20 / distance);
-        const moveX = dx * force;
-        const moveY = dy * force;
-        
-        node.position({
-          x: currentPos.x + moveX,
-          y: currentPos.y + moveY
-        });
-      }
-    });
+  // Compute the connected component once (adjust if you have multiple components)
+  const connectedComponent = draggedNode.closedNeighborhood(); // includes itself + neighbors
+  // Or for full connected component (undirected):
+  // const connectedComponent = draggedNode.connectedNodes().union(draggedNode);
+
+  // Or if your whole graph is one component:
+  // const connectedComponent = cy.nodes();
+
+  lastPosRef.current = {
+    pos: { ...draggedNode.position() },
+    component: connectedComponent,
+    draggedNodeId: draggedNode.id()  // important!
   };
+};
+
+const handleDrag = (evt) => {
+  const draggedNode = evt.target;
+
+  if (!lastPosRef.current) return;
+
+  const currentPos = draggedNode.position();
+  const dx = currentPos.x - lastPosRef.current.pos.x;
+  const dy = currentPos.y - lastPosRef.current.pos.y;
+
+  if (dx === 0 && dy === 0) return;
+
+  // Move ONLY the other nodes in the component
+  lastPosRef.current.component.forEach((node) => {
+    if (node.id() !== lastPosRef.current.draggedNodeId && node.grabbable() && !node.locked()) {
+      const pos = node.position();
+      node.position({
+        x: pos.x + dx,
+        y: pos.y + dy,
+      });
+    }
+  });
+
+  // Update reference position for next drag event
+  lastPosRef.current.pos = { ...currentPos };
+};
+
+const handleDragFree = (evt) => {
+  const node = evt.target;
+
+  // Optional: save final position
+  //savePositionToBackend(node.id(), node.position());
+
+  // Cleanup
+  lastPosRef.current = null;
+};
 
   // Optional: Save position to backend
   const savePositionToBackend = async (nodeId, position) => {
@@ -197,9 +183,9 @@ export default function GraphViewer({ graph, onSelectNode, apiBase }) {
           cy.nodes().grabify();
           
           // Add event listeners
-          cy.on('tap', 'node', handleNodeTap);
-          cy.on('drag', 'node', handleDrag); // Real-time during drag
-          cy.on('dragfree', 'node', handleDragFree); // When drag ends
+cy.on('grab', 'node', handleGrab);        // when grab starts
+cy.on('drag', 'node', handleDrag);        // during drag
+cy.on('free', 'node', handleDragFree);    // when released (use 'free' instead of 'dragfree') // or 'free' if you prefer // When drag ends
         }}
         layout={layout}
         stylesheet={style}
