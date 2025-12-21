@@ -19,6 +19,7 @@ This directory is for storing research papers (PDF files) that will be automatic
 You can organize papers in subdirectories if needed. The system will search recursively for PDF files.
 
 Example structure:
+
 ```
 papers/
 ├── machine-learning/
@@ -32,7 +33,13 @@ papers/
 ```
 
 The system will extract:
+
 - Title (from filename or PDF content)
 - Text content for NLP processing
 - Entities (people, organizations, concepts)
 - Relationships between entities
+
+pip install -U fastapi starlette
+pip install langchain
+pip install langchain-community
+pip install langchain-text-splitters

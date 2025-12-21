@@ -7,31 +7,31 @@
       "authors": "Demo Authors",
       "year": "2024",
       "journal": "Demo Journal",
-      "upload_date": "2025-12-07T13:30:39.861122",
+      "upload_date": "2025-12-20T21:02:14.904312",
       "text_length": 1000,
       "is_demo": true
     },
     {
-      "paper_id": "91766d5e-29b6-42ec-871d-1bd850693436",
-      "filename": "article.pdf",
-      "title": "Mediterranean Smart Cities Conference (MSCC 2025)",
+      "paper_id": "c0a2acce-62b7-43c5-9ec3-4226c4632bb2",
+      "filename": "159 Clinical Research A Big Data Science Approach.pdf",
+      "title": "Scientific",
       "authors": null,
       "year": null,
       "journal": null,
-      "upload_date": "2025-12-07T13:31:15.581405",
-      "text_length": 21147,
-      "pdf_path": "papers\\article.pdf"
+      "upload_date": "2025-12-20T21:23:09.643313",
+      "text_length": 17136,
+      "pdf_path": "papers\\159 Clinical Research A Big Data Science Approach.pdf"
     },
     {
-      "paper_id": "e334c2c0-d095-4b6f-a098-660358f2d6d6",
-      "filename": "Neuronal Collaborative Filtering for Personalized Learning - Article.pdf",
-      "title": "Neuronal Collaborative Filtering for Personalized",
+      "paper_id": "d6511656-327e-40db-a599-c08f661252fa",
+      "filename": "artificial-intelligence-and-contracts-a-new-reality.pdf",
+      "title": "Annals of Bioethics & Clinical Applications",
       "authors": null,
       "year": null,
       "journal": null,
-      "upload_date": "2025-12-07T13:36:38.566395",
-      "text_length": 29487,
-      "pdf_path": "papers\\Neuronal Collaborative Filtering for Personalized Learning - Article.pdf"
+      "upload_date": "2025-12-20T21:26:17.016632",
+      "text_length": 8708,
+      "pdf_path": "papers\\artificial-intelligence-and-contracts-a-new-reality.pdf"
     }
   ]
 }
