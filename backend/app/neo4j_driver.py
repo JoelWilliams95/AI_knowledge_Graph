@@ -242,25 +242,24 @@ def get_subgraph(center_id: str, depth: int = 1):
 
         return list(nodes.values()), edges
 
-def search_papers(query: str, limit: int = 20) -> List[Dict[str, Any]]:
-    """Search papers by keywords"""
+def search_papers(q: str, limit: int = 20) -> List[Dict[str, Any]]:
     driver = get_driver()
     with driver.session() as session:
         cypher = """
         MATCH (p:Paper)
-        WHERE toLower(p.title) CONTAINS toLower($query)
-           OR toLower(p.text) CONTAINS toLower($query)
-           OR toLower(p.authors) CONTAINS toLower($query)
-           OR toLower(p.journal) CONTAINS toLower($query)
+        WHERE toLower(p.title) CONTAINS toLower($q)
+           OR toLower(p.text) CONTAINS toLower($q)
+           OR toLower(p.authors) CONTAINS toLower($q)
+           OR toLower(p.journal) CONTAINS toLower($q)
         RETURN p
         ORDER BY
-          CASE WHEN toLower(p.title) CONTAINS toLower($query) THEN 1 ELSE 2 END,
+          CASE WHEN toLower(p.title) CONTAINS toLower($q) THEN 1 ELSE 2 END,
           p.upload_date DESC
         LIMIT $limit
         """
-        result = session.run(cypher, query=query, limit=limit)
+        result = session.run(cypher, q=q, limit=limit)
+
         papers = []
-        
         for record in result:
             paper = record["p"]
             papers.append({
@@ -271,25 +270,30 @@ def search_papers(query: str, limit: int = 20) -> List[Dict[str, Any]]:
                 "journal": paper.get("journal"),
                 "filename": paper.get("filename"),
                 "upload_date": paper.get("upload_date"),
-                "text_snippet": (paper.get("text", "")[:300] + "...") if len(paper.get("text", "")) > 300 else paper.get("text", "")
+                "text_snippet": (
+                    paper.get("text", "")[:300] + "..."
+                    if len(paper.get("text", "")) > 300
+                    else paper.get("text", "")
+                )
             })
-        
         return papers
 
-def search_entities(query: str, limit: int = 50) -> List[Dict[str, Any]]:
-    """Search entities by name or type"""
+def search_entities(q: str, limit: int = 50) -> List[Dict[str, Any]]:
     driver = get_driver()
     with driver.session() as session:
         cypher = """
         MATCH (e)
         WHERE (e:Entity OR e:PERSON OR e:ORG OR e:GPE OR e:WORK_OF_ART OR e:CONCEPT OR e:CITED_PAPER)
-        AND (toLower(e.name) CONTAINS toLower($query) OR toLower(labels(e)[0]) CONTAINS toLower($query))
+        AND (
+            toLower(e.name) CONTAINS toLower($q)
+            OR toLower(labels(e)[0]) CONTAINS toLower($q)
+        )
         RETURN DISTINCT e, labels(e) as entity_labels
         LIMIT $limit
         """
-        result = session.run(cypher, query=query, limit=limit)
+        result = session.run(cypher, q=q, limit=limit)
+
         entities = []
-        
         for record in result:
             entity = record["e"]
             labels = record["entity_labels"]
@@ -300,7 +304,6 @@ def search_entities(query: str, limit: int = 50) -> List[Dict[str, Any]]:
                 "paper_id": entity.get("paper_id"),
                 "props": dict(entity.items())
             })
-        
         return entities
 
 def get_papers_by_entity(entity_id: str) -> List[Dict[str, Any]]:
@@ -341,22 +344,22 @@ def get_graph_by_search(query: str, limit: int = 500):
             # STEP 1: Get ALL nodes for this paper (even disconnected ones)
             nodes_cypher = """
             MATCH (n)
-            WHERE n.paper_id = $query
+            WHERE n.paper_id = $paper_id
             AND NOT 'Paper' IN labels(n)
             RETURN n
             LIMIT $limit
             """
-            nodes_result = session.run(nodes_cypher, query=query, limit=limit)
+            nodes_result = session.run(nodes_cypher, paper_id=query, limit=limit)
             
             # STEP 2: Get ALL relationships between these nodes
             edges_cypher = """
             MATCH (n)-[r]-(m)
-            WHERE n.paper_id = $query AND m.paper_id = $query
+            WHERE n.paper_id = $paper_id AND m.paper_id = $paper_id
             AND NOT 'Paper' IN labels(n) AND NOT 'Paper' IN labels(m)
             RETURN DISTINCT n, r, m
             LIMIT $limit
             """
-            edges_result = session.run(edges_cypher, query=query, limit=limit)
+            edges_result = session.run(edges_cypher, paper_id=query, limit=limit)
             
         else:
             print(f"🔍 Text search: {query}")
@@ -364,12 +367,12 @@ def get_graph_by_search(query: str, limit: int = 500):
             # Find papers first
             papers_cypher = """
             MATCH (p:Paper)
-            WHERE toLower(p.title) CONTAINS toLower($query)
-               OR toLower(p.text) CONTAINS toLower($query)
-               OR toLower(p.authors) CONTAINS toLower($query)
+            WHERE toLower(p.title) CONTAINS toLower($q)
+               OR toLower(p.text) CONTAINS toLower($q)
+               OR toLower(p.authors) CONTAINS toLower($q)
             RETURN collect(p.paper_id) as paper_ids
             """
-            papers_result = session.run(papers_cypher, query=query)
+            papers_result = session.run(papers_cypher, q=query)
             paper_ids_record = papers_result.single()
             paper_ids = paper_ids_record["paper_ids"] if paper_ids_record else []
             

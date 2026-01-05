@@ -101,19 +101,21 @@ export default function GraphViewer({ graph, onSelectNode, apiBase }) {
   // Handle when node is being dragged - reposition connected nodes
 const handleGrab = (evt) => {
   const draggedNode = evt.target;
-
-  // Compute the connected component once (adjust if you have multiple components)
-  const connectedComponent = draggedNode.closedNeighborhood(); // includes itself + neighbors
-  // Or for full connected component (undirected):
-  // const connectedComponent = draggedNode.connectedNodes().union(draggedNode);
-
-  // Or if your whole graph is one component:
-  // const connectedComponent = cy.nodes();
+  const draggedLabel = draggedNode.data('label');
+  
+  // Check if the dragged node is the central node (ends with .pdf)
+  const isCentralNode = draggedLabel && draggedLabel.endsWith('.pdf');
+  
+  // If central node, drag the whole connected component; otherwise, just this node
+  const component = isCentralNode 
+    ? draggedNode.closedNeighborhood() 
+    : cyRef.current.collection(draggedNode);
 
   lastPosRef.current = {
     pos: { ...draggedNode.position() },
-    component: connectedComponent,
-    draggedNodeId: draggedNode.id()  // important!
+    component: component,
+    draggedNodeId: draggedNode.id(),
+    isCentralNode: isCentralNode
   };
 };
 
@@ -128,16 +130,19 @@ const handleDrag = (evt) => {
 
   if (dx === 0 && dy === 0) return;
 
-  // Move ONLY the other nodes in the component
-  lastPosRef.current.component.forEach((node) => {
-    if (node.id() !== lastPosRef.current.draggedNodeId && node.grabbable() && !node.locked()) {
-      const pos = node.position();
-      node.position({
-        x: pos.x + dx,
-        y: pos.y + dy,
-      });
-    }
-  });
+  if (lastPosRef.current.isCentralNode) {
+    // Central node: move all connected nodes with it
+    lastPosRef.current.component.forEach((node) => {
+      if (node.id() !== lastPosRef.current.draggedNodeId && node.grabbable() && !node.locked()) {
+        const pos = node.position();
+        node.position({
+          x: pos.x + dx,
+          y: pos.y + dy,
+        });
+      }
+    });
+  }
+  // If not central node, the natural Cytoscape drag handles it (only this node moves)
 
   // Update reference position for next drag event
   lastPosRef.current.pos = { ...currentPos };
