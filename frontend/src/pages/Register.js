@@ -2,28 +2,66 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Register() {
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
 
     if (!email.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
-      alert("Please fill all fields");
+      setError("Please fill all fields");
+      setLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match!");
+      setError("Passwords do not match!");
+      setLoading(false);
       return;
     }
 
-    alert("Account created! Now login.");
-    navigate("/login");
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          username: username.trim(),
+          password: password
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.detail || "Registration failed");
+        setLoading(false);
+        return;
+      }
+
+      alert("Account created successfully! Now login.");
+      navigate("/login");
+    } catch (err) {
+      setError("Network error: " + err.message);
+      setLoading(false);
+    }
   };
 
   // SAME BACKGROUND ANIMATION AS LOGIN
@@ -102,6 +140,8 @@ export default function Register() {
           <h2>Create Account</h2>
           <p className="subtitle">Join our AI platform</p>
 
+          {error && <div className="error-message">{error}</div>}
+
           <form onSubmit={submit}>
 
             <div className="input-group">
@@ -110,6 +150,17 @@ export default function Register() {
                 placeholder="Your email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+
+            <div className="input-group">
+              <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -119,6 +170,7 @@ export default function Register() {
                 placeholder="Choose password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -128,10 +180,13 @@ export default function Register() {
                 placeholder="Confirm password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
 
-            <button type="submit" className="btn-login">Register</button>
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading ? "Creating account..." : "Register"}
+            </button>
           </form>
 
           <p className="register-text">

@@ -162,6 +162,19 @@ body, #root {
 /* Theme toggle button */
 .theme-toggle-btn { background: transparent; border: none; color: var(--text); font-size: 1.05rem; cursor: pointer; margin-right: 8px; padding: 6px; }
 .theme-toggle-btn:hover { background: var(--overlay-light); border-radius: 6px; }
+
+/* Refresh button */
+.refresh-btn { 
+  background: transparent; 
+  border: 1px solid var(--border); 
+  color: var(--text); 
+  font-size: 0.95rem; 
+  cursor: pointer; 
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+.refresh-btn:hover { background: var(--overlay-light); }
 .info-panel { font-family: monospace; font-size: 13px; }
 .error-message { background: var(--overlay-light); padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 14px; color: var(--text); border: 1px solid var(--border); }
 .backend-status { margin-top: 20px; padding: 12px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }

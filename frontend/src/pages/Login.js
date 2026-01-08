@@ -3,22 +3,51 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../services/AuthContext";
 import "../styles/auth.css";
 
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+    setError("");
+    setLoading(true);
     
     if (!email.trim() || !password.trim()) {
-      alert("Please enter email and password");
+      setError("Please enter email and password");
+      setLoading(false);
       return;
     }
 
-    // Mock login - in production, call API
-    const mockToken = "mock-token-" + Date.now();
-    login(mockToken);
+    try {
+      const response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password: password
+        })
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.detail || "Login failed");
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      login(data.access_token);
+    } catch (err) {
+      setError("Network error: " + err.message);
+      setLoading(false);
+    }
   };
 
 useEffect(() => {
@@ -108,6 +137,8 @@ useEffect(() => {
           <h2>Welcome Back</h2>
           <p className="subtitle">Sign in to continue your AI journey</p>
 
+          {error && <div className="error-message">{error}</div>}
+
           <form onSubmit={submit}>
             <div className="input-group">
               <span className="input-icon">📧</span>
@@ -116,6 +147,7 @@ useEffect(() => {
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
 
@@ -126,10 +158,13 @@ useEffect(() => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
               />
             </div>
 
-            <button type="submit" className="btn-login">Sign In</button>
+            <button type="submit" className="btn-login" disabled={loading}>
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
           </form>
 
           <p className="register-text">

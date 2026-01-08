@@ -142,12 +142,23 @@
 .register-text a:hover {
   text-decoration: underline;
 }
-#graph-bg {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: 0;
-  pointer-events: none;
+
+/* ===== ERROR MESSAGE ===== */
+.error-message {
+  background-color: rgba(255, 68, 68, 0.2);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  color: #ff4444;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  text-align: center;
 }
+
+/* ===== DISABLED STATE ===== */
+button:disabled,
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
