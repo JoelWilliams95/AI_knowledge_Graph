@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../services/AuthContext';
 
-const Header = ({ onRefresh, onOpenProfile, theme, onToggleTheme }) => {
+const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const { logout } = useAuth();
   const navigate = useNavigate();
 
   const handleClickOutside = (e) => {
@@ -20,6 +22,20 @@ const Header = ({ onRefresh, onOpenProfile, theme, onToggleTheme }) => {
 
   const handleHomeClick = () => {
     navigate('/');
+  };
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const handleSettings = () => {
+    setShowSettings(false);
+    if (onOpenSettings) onOpenSettings();
+  };
+
+  const handleProfile = () => {
+    setShowSettings(false);
+    if (onOpenProfile) onOpenProfile();
   };
 
   return (
@@ -51,6 +67,10 @@ const Header = ({ onRefresh, onOpenProfile, theme, onToggleTheme }) => {
             {theme === 'dark' ? '🌙' : '☀️'}
           </button>
 
+          <button className="refresh-btn" onClick={(e) => { e.stopPropagation(); if (onRefresh) onRefresh(); }} title="Refresh data">
+            Refresh Data
+          </button>
+
           <button className="profile-btn" onClick={(e) => {
             e.stopPropagation();
             setShowSettings(!showSettings);
@@ -60,9 +80,16 @@ const Header = ({ onRefresh, onOpenProfile, theme, onToggleTheme }) => {
           </button>
           {showSettings && (
             <div className="profile-dropdown">
-              <button onClick={() => { /* placeholder for settings */ }}>⚙️ Settings</button>
-              <button onClick={() => { if (onOpenProfile) onOpenProfile(); }}>👤 Profile</button>
-              <button onClick={() => { /* TODO: implement sign out */ }}>🚪 Sign Out</button>
+              <button onClick={handleSettings} className="dropdown-item">
+                ⚙️ Settings
+              </button>
+              <button onClick={handleProfile} className="dropdown-item">
+                👤 Profile
+              </button>
+              <div className="dropdown-divider"></div>
+              <button onClick={handleLogout} className="dropdown-item danger">
+                🚪 Sign Out
+              </button>
             </div>
           )}
         </div>

@@ -1,7 +1,7 @@
 # main.py - Enhanced version with new features
 
 import os
-from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, HTTPException, BackgroundTasks, Depends
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -9,6 +9,7 @@ import uuid
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from typing import Optional, List
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 load_dotenv()
 
@@ -22,6 +23,8 @@ from .papers_manager import (get_preloaded_papers, add_paper_to_collection,
 from .archive_downloader import (download_from_archive_identifier, 
                                 search_archive, download_sample_papers,
                                 download_pdf_from_url)
+from .auth.router import router as auth_router
+from .auth.jwt_handler import decode_access_token
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
@@ -39,6 +42,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include authentication router
+app.include_router(auth_router)
+
+# Security
+security = HTTPBearer()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependency to verify JWT token"""
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    if payload is None:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return payload
 
 # Pydantic models for request validation
 class ProcessTextRequest(BaseModel):
