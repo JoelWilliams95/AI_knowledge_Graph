@@ -452,3 +452,59 @@ def get_graph_by_search(query: str, limit: int = 500):
         print(f"📊 Retrieved {len(nodes)} nodes and {len(edges)} edges for query: {query[:50]}")
         
         return list(nodes.values()), edges
+
+def get_autocomplete_suggestions(q: str, limit: int = 10) -> dict:
+    """
+    Get autocomplete suggestions for both papers and entities
+    Used for real-time suggestions as user types in search bar
+    """
+    if not q.strip() or len(q) < 2:
+        return {"papers": [], "entities": []}
+    
+    driver = get_driver()
+    with driver.session() as session:
+        # Get paper title suggestions
+        papers_cypher = """
+        MATCH (p:Paper)
+        WHERE toLower(p.title) CONTAINS toLower($q)
+        RETURN DISTINCT p.title as title, p.paper_id as paper_id
+        ORDER BY
+          CASE WHEN toLower(p.title) STARTS WITH toLower($q) THEN 1 ELSE 2 END,
+          p.upload_date DESC
+        LIMIT $limit
+        """
+        papers_result = session.run(papers_cypher, q=q, limit=limit)
+        
+        papers = []
+        for record in papers_result:
+            papers.append({
+                "title": record["title"],
+                "paper_id": record["paper_id"],
+                "type": "paper"
+            })
+        
+        # Get entity suggestions
+        entities_cypher = """
+        MATCH (e)
+        WHERE (e:Entity OR e:PERSON OR e:ORG OR e:GPE OR e:WORK_OF_ART OR e:CONCEPT OR e:CITED_PAPER)
+        AND toLower(e.name) CONTAINS toLower($q)
+        RETURN DISTINCT e.name as name, labels(e)[0] as entity_type, e.id as entity_id
+        ORDER BY
+          CASE WHEN toLower(e.name) STARTS WITH toLower($q) THEN 1 ELSE 2 END
+        LIMIT $limit
+        """
+        entities_result = session.run(entities_cypher, q=q, limit=limit)
+        
+        entities = []
+        for record in entities_result:
+            entities.append({
+                "name": record["name"],
+                "type": record["entity_type"],
+                "entity_id": record["entity_id"]
+            })
+        
+        return {
+            "papers": papers,
+            "entities": entities,
+            "query": q
+        }

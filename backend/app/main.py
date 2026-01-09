@@ -17,7 +17,7 @@ from .pdf_utils import extract_text_from_pdf
 from .nlp_enhanced import process_text_to_graph, process_text_to_graph_enhanced
 from .neo4j_driver import (upsert_graph, upsert_paper, upsert_graph_with_paper,
                           get_graph, get_subgraph, search_papers, search_entities,
-                          get_papers_by_entity, get_graph_by_search)
+                          get_papers_by_entity, get_graph_by_search, get_autocomplete_suggestions)
 from .papers_manager import (get_preloaded_papers, add_paper_to_collection,
                            process_papers_directory, initialize_demo_papers)
 from .archive_downloader import (download_from_archive_identifier, 
@@ -391,6 +391,12 @@ async def search_graph(q: str, limit: int = 100):
         return get_graph(limit=limit)
     nodes, edges = get_graph_by_search(q, limit=limit)
     return {"nodes": nodes, "edges": edges, "query": q}
+
+@app.get("/suggest")
+async def autocomplete_suggestions(q: str, limit: int = 10):
+    """Get autocomplete suggestions as user types in search bar"""
+    suggestions = get_autocomplete_suggestions(q, limit=limit)
+    return suggestions
 
 # ------------------------------------------------------------------
 # Health Check

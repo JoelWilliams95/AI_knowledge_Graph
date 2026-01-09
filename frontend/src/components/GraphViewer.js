@@ -17,13 +17,13 @@ export default function GraphViewer({ graph, onSelectNode, apiBase }) {
   }, []);
 
   const elements = [
-    ...graph.nodes.map((n) => ({ 
+    ...((graph?.nodes || []).map((n) => ({ 
       data: { id: n.id, label: n.label, props: n.props },
-      grabbable: true // Make sure nodes are grabbable
-    })),
-    ...graph.edges.map((e) => ({ 
+      grabbable: true
+    })) || []),
+    ...((graph?.edges || []).map((e) => ({ 
       data: { id: e.id, source: e.source, target: e.target, label: e.label } 
-    })),
+    })) || []),
   ];
 
   const layout = {
@@ -76,10 +76,18 @@ export default function GraphViewer({ graph, onSelectNode, apiBase }) {
         'label': 'data(label)', 
         'curve-style': 'bezier', 
         'target-arrow-shape': 'triangle',
-        'width': 2,
-        'line-color': '#666',
-        'target-arrow-color': '#666',
-        'font-size': '10px'
+        'width': 2.5,
+        'line-color': '#60a5fa',
+        'target-arrow-color': '#60a5fa',
+        'font-size': '11px',
+        'color': '#e6eef8',
+        'text-background-color': '#0f1724',
+        'text-background-opacity': 0.95,
+        'text-background-padding': '4px',
+        'text-border-width': 1,
+        'text-border-color': '#60a5fa',
+        'text-border-opacity': 0.5,
+        'font-weight': 500
       } 
     },
   ];

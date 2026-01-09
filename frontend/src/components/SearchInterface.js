@@ -1,16 +1,33 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
-export default function SearchInterface({ onSearchResults, apiBase }) {
+export default function SearchInterface({ onSearchResults, apiBase, graphData }) {
   const [query, setQuery] = useState('');
   const [searchType, setSearchType] = useState('papers'); // 'papers' or 'entities'
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedPaper, setSelectedPaper] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const suggestionsRef = useRef(null);
+  const debounceTimerRef = useRef(null);
 
   // Load all papers on component mount
   useEffect(() => {
     loadAllPapers();
+  }, []);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const loadAllPapers = async () => {
@@ -22,11 +39,97 @@ export default function SearchInterface({ onSearchResults, apiBase }) {
     }
   };
 
+  const fetchSuggestions = async (searchQuery) => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    try {
+      const response = await axios.get(`${apiBase}/suggest?q=${encodeURIComponent(searchQuery)}&limit=5`);
+      
+      // Also get suggestions from the current graph
+      const graphSuggestions = getGraphSuggestions(searchQuery);
+      
+      setSuggestions({
+        papers: response.data.papers || [],
+        entities: response.data.entities || [],
+        graphEntities: graphSuggestions
+      });
+      setShowSuggestions(true);
+    } catch (error) {
+      console.error('Failed to fetch suggestions:', error);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  // Get suggestions from the current graph
+  const getGraphSuggestions = (searchQuery) => {
+    if (!graphData?.nodes || graphData.nodes.length === 0) {
+      return [];
+    }
+
+    const lowerQuery = searchQuery.toLowerCase();
+    const uniqueEntities = new Map();
+
+    // Filter nodes that match the query and aren't papers
+    graphData.nodes.forEach(node => {
+      if (node.label && node.label.toLowerCase().includes(lowerQuery)) {
+        // Avoid duplicates by using label as key
+        if (!uniqueEntities.has(node.label)) {
+          uniqueEntities.set(node.label, {
+            name: node.label,
+            type: node.type || 'Entity',
+            source: 'graph', // Mark as from graph
+            id: node.id
+          });
+        }
+      }
+    });
+
+    // Return up to 5 suggestions, sorted by length (exact matches first)
+    return Array.from(uniqueEntities.values())
+      .sort((a, b) => a.name.length - b.name.length)
+      .slice(0, 5);
+  };
+
+  const handleQueryChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+
+    // Debounce suggestions fetch
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (value.trim().length >= 2) {
+      debounceTimerRef.current = setTimeout(() => {
+        fetchSuggestions(value);
+      }, 300); // 300ms debounce
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleSuggestionClick = (suggestion) => {
+    if (suggestion.type === 'paper') {
+      setQuery(suggestion.title);
+      setShowSuggestions(false);
+    } else if (suggestion.type && (suggestion.type !== 'paper')) {
+      setQuery(suggestion.name || suggestion.title);
+      setShowSuggestions(false);
+    }
+  };
+
   const handleSearch = async (e) => {
     e.preventDefault();
     if (!query.trim()) return;
 
     setLoading(true);
+    setShowSuggestions(false);
     try {
       if (searchType === 'papers') {
         // Search papers and update graph
@@ -41,9 +144,12 @@ export default function SearchInterface({ onSearchResults, apiBase }) {
           type: 'papers'
         });
       } else {
-        // Search entities
-        const entitiesResponse = await axios.get(`${apiBase}/entities/search?q=${encodeURIComponent(query)}`);
-        onSearchResults([], [], {
+        // Search entities - also fetch the graph data
+        const [entitiesResponse, graphResponse] = await Promise.all([
+          axios.get(`${apiBase}/entities/search?q=${encodeURIComponent(query)}`),
+          axios.get(`${apiBase}/graph/search?q=${encodeURIComponent(query)}`)
+        ]);
+        onSearchResults(graphResponse.data.nodes || [], graphResponse.data.edges || [], {
           entities: entitiesResponse.data.entities,
           query: query,
           type: 'entities'
@@ -99,13 +205,75 @@ export default function SearchInterface({ onSearchResults, apiBase }) {
             <option value="entities">Search Entities</option>
           </select>
           
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={searchType === 'papers' ? 'Enter keywords to search papers...' : 'Search for entities...'}
-            className="search-input"
-          />
+          <div className="search-input-wrapper" ref={suggestionsRef}>
+            <input
+              type="text"
+              value={query}
+              onChange={handleQueryChange}
+              onFocus={() => query.length >= 2 && suggestions.length > 0 && setShowSuggestions(true)}
+              placeholder={searchType === 'papers' ? 'Enter keywords to search papers...' : 'Search for entities...'}
+              className="search-input"
+              autoComplete="off"
+            />
+            
+            {showSuggestions && (suggestions.papers?.length > 0 || suggestions.entities?.length > 0 || suggestions.graphEntities?.length > 0) && (
+              <div className="suggestions-dropdown">
+                {suggestionsLoading ? (
+                  <div className="suggestion-item disabled">Loading suggestions...</div>
+                ) : (
+                  <>
+                    {suggestions.graphEntities && suggestions.graphEntities.length > 0 && (
+                      <div className="suggestions-group">
+                        <div className="suggestions-group-title">📊 From Current Graph</div>
+                        {suggestions.graphEntities.map((entity, idx) => (
+                          <div
+                            key={`graph-entity-${idx}`}
+                            className="suggestion-item"
+                            onClick={() => handleSuggestionClick(entity)}
+                          >
+                            <div className="suggestion-text">{entity.name}</div>
+                            <div className="suggestion-meta">{entity.type}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {suggestions.papers && suggestions.papers.length > 0 && (
+                      <div className="suggestions-group">
+                        <div className="suggestions-group-title">📄 Papers</div>
+                        {suggestions.papers.map((paper, idx) => (
+                          <div
+                            key={`paper-${idx}`}
+                            className="suggestion-item"
+                            onClick={() => handleSuggestionClick(paper)}
+                          >
+                            <div className="suggestion-text">{paper.title}</div>
+                            <div className="suggestion-meta">{paper.paper_id?.substring(0, 8)}...</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {suggestions.entities && suggestions.entities.length > 0 && (
+                      <div className="suggestions-group">
+                        <div className="suggestions-group-title">🔤 Database Entities</div>
+                        {suggestions.entities.map((entity, idx) => (
+                          <div
+                            key={`entity-${idx}`}
+                            className="suggestion-item"
+                            onClick={() => handleSuggestionClick(entity)}
+                          >
+                            <div className="suggestion-text">{entity.name}</div>
+                            <div className="suggestion-meta">{entity.type}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+          </div>
           
           <button type="submit" disabled={loading || !query.trim()}>
             {loading ? 'Searching...' : 'Search'}
@@ -113,41 +281,61 @@ export default function SearchInterface({ onSearchResults, apiBase }) {
         </div>
       </form>
 
-      <div className="action-buttons">
-        <button onClick={loadFullGraph} className="secondary-btn">
-          View Full Graph
-        </button>
-        <button onClick={loadAllPapers} className="secondary-btn">
-          Refresh Papers
-        </button>
-      </div>
+      {/* Search Results Display */}
+      {suggestions.query && (
+        <div className="search-results-section">
+          {loading && (
+            <div className="results-placeholder">Searching...</div>
+          )}
 
-      {/* Papers List */}
-      <div className="papers-section">
-        <h4>Available Papers ({papers.length})</h4>
-        <div className="papers-list">
-          {papers.map((paper) => (
-            <div 
-              key={paper.paper_id} 
-              className={`paper-item ${selectedPaper === paper.paper_id ? 'selected' : ''}`}
-            >
-              <h5>{paper.title}</h5>
-              {paper.authors && <p className="paper-authors">By: {paper.authors}</p>}
-              {paper.year && <span className="paper-year">{paper.year}</span>}
-              {paper.journal && <span className="paper-journal"> • {paper.journal}</span>}
-              
-              <div className="paper-actions">
-                <button 
-                  onClick={() => viewPaperGraph(paper.paper_id)}
-                  className="view-graph-btn"
-                >
-                  View Graph
-                </button>
+          {!loading && suggestions.graphEntities && suggestions.graphEntities.length > 0 && (
+            <div className="results-group">
+              <div className="results-group-title">📊 From Current Graph ({suggestions.graphEntities.length})</div>
+              <div className="results-items">
+                {suggestions.graphEntities.map((entity, idx) => (
+                  <div key={`result-graph-entity-${idx}`} className="result-item">
+                    <div className="result-title">{entity.name}</div>
+                    <div className="result-meta">{entity.type}</div>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
+          )}
+
+          {!loading && suggestions.papers && suggestions.papers.length > 0 && (
+            <div className="results-group">
+              <div className="results-group-title">📄 Papers Found ({suggestions.papers.length})</div>
+              <div className="results-items">
+                {suggestions.papers.map((paper, idx) => (
+                  <div key={`result-paper-${idx}`} className="result-item">
+                    <div className="result-title">{paper.title}</div>
+                    <div className="result-meta">{paper.paper_id?.substring(0, 8)}...</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!loading && suggestions.entities && suggestions.entities.length > 0 && (
+            <div className="results-group">
+              <div className="results-group-title">🔤 Database Entities ({suggestions.entities.length})</div>
+              <div className="results-items">
+                {suggestions.entities.map((entity, idx) => (
+                  <div key={`result-entity-${idx}`} className="result-item">
+                    <div className="result-title">{entity.name}</div>
+                    <div className="result-meta">{entity.type}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!loading && (!suggestions.papers || suggestions.papers.length === 0) && 
+           (!suggestions.entities || suggestions.entities.length === 0) && (
+            <div className="results-placeholder">No results found for "{suggestions.query}"</div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }

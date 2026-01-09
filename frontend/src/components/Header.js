@@ -4,6 +4,7 @@ import { useAuth } from '../services/AuthContext';
 
 const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme }) => {
   const [showSettings, setShowSettings] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const { logout } = useAuth();
   const navigate = useNavigate();
 
@@ -38,6 +39,15 @@ const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme
     if (onOpenProfile) onOpenProfile();
   };
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (onRefresh) await onRefresh();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <header className="app-header">
       <div className="header-content">
@@ -67,8 +77,8 @@ const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme
             {theme === 'dark' ? '🌙' : '☀️'}
           </button>
 
-          <button className="refresh-btn" onClick={(e) => { e.stopPropagation(); if (onRefresh) onRefresh(); }} title="Refresh data">
-            Refresh Data
+          <button className="refresh-btn" onClick={(e) => { e.stopPropagation(); handleRefresh(); }} title="Refresh data and reset graph" disabled={isRefreshing}>
+            {isRefreshing ? '⟳ Refreshing...' : '🔄 Refresh Data'}
           </button>
 
           <button className="profile-btn" onClick={(e) => {
