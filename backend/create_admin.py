@@ -22,7 +22,7 @@ def create_admin():
             print(f"❌ Admin user already exists: {existing_admin.email}")
             print("   To create another admin, use the admin dashboard after logging in.")
             return
-        
+
         # Check if any users exist
         existing_users = db.query(User).count()
         if existing_users > 0:
@@ -31,17 +31,17 @@ def create_admin():
             if response.lower() != 'yes':
                 print("❌ Cancelled.")
                 return
-        
+
         # Get admin details
         print("\n" + "="*50)
         print("Creating First Admin User")
         print("="*50)
         email = input("Enter admin email: ").strip().lower()
-        
+
         if not email:
             print("❌ Email is required!")
             return
-        
+
         # Check if email already exists
         existing_user = db.query(User).filter(User.email == email).first()
         if existing_user:
@@ -55,20 +55,20 @@ def create_admin():
             else:
                 print("❌ Cancelled.")
                 return
-        
+
         username = input("Enter admin username (optional): ").strip()
         password = input("Enter admin password (min 6 characters): ").strip()
-        
+
         if len(password) < 6:
             print("❌ Password must be at least 6 characters!")
             return
-        
+
         confirm_password = input("Confirm password: ").strip()
-        
+
         if password != confirm_password:
             print("❌ Passwords do not match!")
             return
-        
+
         # Create admin user
         admin_user = User(
             email=email,
@@ -76,11 +76,11 @@ def create_admin():
             password=hash_password(password),
             role=UserRole.ADMIN.value
         )
-        
+
         db.add(admin_user)
         db.commit()
         db.refresh(admin_user)
-        
+
         print("\n" + "="*50)
         print("✅ Admin user created successfully!")
         print("="*50)
@@ -90,7 +90,7 @@ def create_admin():
         print(f"ID: {admin_user.id}")
         print("\nYou can now login with these credentials.")
         print("="*50)
-        
+
     except Exception as e:
         db.rollback()
         print(f"❌ Error creating admin: {e}")

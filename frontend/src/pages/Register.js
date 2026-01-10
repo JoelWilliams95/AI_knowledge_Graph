@@ -2,67 +2,25 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/auth.css";
 
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
-
 export default function Register() {
-  const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [countdown, setCountdown] = useState(5);
 
-  const submit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
-    if (!email.trim() || !username.trim() || !password.trim() || !confirmPassword.trim()) {
-      setError("Please fill all fields");
-      setLoading(false);
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match!");
-      setLoading(false);
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          username: username.trim(),
-          password: password
-        })
+  // Registration is now admin-only
+  // This page shows information that users cannot self-register
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          navigate("/login");
+          return 0;
+        }
+        return prev - 1;
       });
+    }, 1000);
 
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.detail || "Registration failed");
-        setLoading(false);
-        return;
-      }
-
-      alert("Account created successfully! Now login.");
-      navigate("/login");
-    } catch (err) {
-      setError("Network error: " + err.message);
-      setLoading(false);
-    }
-  };
+    return () => clearInterval(timer);
+  }, [navigate]);
 
   // SAME BACKGROUND ANIMATION AS LOGIN
   useEffect(() => {
@@ -137,61 +95,36 @@ export default function Register() {
 
       <div className="container-center">
         <div className="auth-container modern-glass">
-          <h2>Create Account</h2>
-          <p className="subtitle">Join our AI platform</p>
+          <h2>🔒 Registration Disabled</h2>
+          <p className="subtitle">User accounts can only be created by administrators</p>
 
-          {error && <div className="error-message">{error}</div>}
+          <div className="info-message" style={{
+            background: 'rgba(59, 130, 246, 0.1)',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '8px',
+            padding: '20px',
+            margin: '20px 0',
+            textAlign: 'center'
+          }}>
+            <p style={{ margin: '10px 0', color: '#e6eef8' }}>
+              User registration is restricted to administrators only.
+              <br />
+              <br />
+              Please contact an administrator to create an account.
+            </p>
+            <p style={{ marginTop: '20px', fontSize: '14px', color: '#aaa' }}>
+              Redirecting to login in {countdown} seconds...
+            </p>
+          </div>
 
-          <form onSubmit={submit}>
-
-            <div className="input-group">
-              <input
-                type="email"
-                placeholder="Your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="input-group">
-              <input
-                type="text"
-                placeholder="Username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="input-group">
-              <input
-                type="password"
-                placeholder="Choose password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <div className="input-group">
-              <input
-                type="password"
-                placeholder="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                disabled={loading}
-              />
-            </div>
-
-            <button type="submit" className="btn-login" disabled={loading}>
-              {loading ? "Creating account..." : "Register"}
-            </button>
-          </form>
-
-          <p className="register-text">
-            Already have an account? <Link to="/login">Login</Link>
-          </p>
+          <Link to="/login" className="btn-login" style={{
+            display: 'block',
+            textAlign: 'center',
+            textDecoration: 'none',
+            marginTop: '20px'
+          }}>
+            Go to Login
+          </Link>
         </div>
       </div>
     </div>

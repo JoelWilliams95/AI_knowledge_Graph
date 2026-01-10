@@ -43,7 +43,7 @@ export default function Login() {
       }
 
       const data = await response.json();
-      login(data.access_token);
+      login(data.access_token, data.user);
     } catch (err) {
       setError("Network error: " + err.message);
       setLoading(false);

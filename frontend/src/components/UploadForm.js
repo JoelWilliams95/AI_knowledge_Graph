@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-export default function UploadForm({ onProcessed, apiBase }) {
+export default function UploadForm({ onProcessed, apiBase, toast }) {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -17,14 +17,28 @@ export default function UploadForm({ onProcessed, apiBase }) {
       const text = (await up).data.text_snippet || '';
       // For demo, send full file text to process-text; ideally the backend should extract and persist
       const res = await axios.post(`${apiBase}/process-text`, { text: text });
+      const nodeCount = res.data.nodes?.length || 0;
+      const edgeCount = res.data.edges?.length || 0;
       onProcessed(res.data.nodes, res.data.edges);
+      if (toast) {
+        toast.success(`Successfully processed paper! Extracted ${nodeCount} entities and ${edgeCount} relationships.`);
+      }
     } catch (err) {
       console.error(err);
       // More user-friendly error message that provides guidance
-      if (err.message === 'Network Error') {
-        alert('Cannot connect to the backend server. Please make sure the FastAPI backend is running at: ' + apiBase);
+      if (toast) {
+        if (err.message === 'Network Error') {
+          toast.error(`Cannot connect to the backend server. Please make sure the FastAPI backend is running at: ${apiBase}`);
+        } else {
+          toast.error(`Error: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+        }
       } else {
-        alert(`Error: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+        // Fallback to alert if toast not available
+        if (err.message === 'Network Error') {
+          alert('Cannot connect to the backend server. Please make sure the FastAPI backend is running at: ' + apiBase);
+        } else {
+          alert(`Error: ${err.response?.data?.detail || err.message || 'Unknown error'}`);
+        }
       }
     } finally {
       setLoading(false);

@@ -1,18 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import UploadForm from './components/UploadForm';
 import SearchInterface from './components/SearchInterface';
+import AdminDashboard from './components/AdminDashboard';
 import GraphViewer from './components/GraphViewer';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Modal from './components/Modal';
+import ToastContainer from './components/ToastContainer';
 import { useGraphData } from './hooks/useGraphData';
 import { useTheme } from './hooks/useTheme';
+import { useToast } from './hooks/useToast';
+import { useAuth } from './services/AuthContext';
 import { API_BASE } from './utils/constants';
 import axios from 'axios';
 
 export default function App() {
   const graphData = useGraphData();
   const { theme, toggleTheme } = useTheme();
+  const toast = useToast();
+  const { user, isAdmin } = useAuth();
   const [selected, setSelected] = useState(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
@@ -20,7 +26,7 @@ export default function App() {
   const [papers, setPapers] = useState([]);
   const [selectedPaperId, setSelectedPaperId] = useState(null);
   const [paperLoading, setPaperLoading] = useState(false);
-  const [leftPaneTab, setLeftPaneTab] = useState('papers'); // 'papers' or 'search'
+  const [leftPaneTab, setLeftPaneTab] = useState('papers'); // 'papers', 'search', or 'admin'
   const [rightPaneTab, setRightPaneTab] = useState('details'); // 'details' or 'info'
   const [searchResults, setSearchResults] = useState(null);
   const [filteredGraph, setFilteredGraph] = useState(null);
@@ -94,7 +100,16 @@ export default function App() {
   // Handle search results
   const handleSearchResults = (nodes, edges, resultInfo) => {
     setSearchResults(resultInfo);
-    
+
+    // Show toast notification with search results
+    if (resultInfo.type === 'papers' && resultInfo.papers) {
+      toast.success(`Found ${resultInfo.papers.length} paper(s) matching "${resultInfo.query}"`);
+    } else if (resultInfo.type === 'entities' && resultInfo.entities) {
+      const entityCount = resultInfo.entities.length;
+      const visibleNodes = nodes.length;
+      toast.info(`Found ${entityCount} entity/entities matching "${resultInfo.query}". Showing ${visibleNodes} connected nodes in graph.`);
+    }
+
     // If searching for entities, filter graph to show only related nodes
     if (resultInfo.type === 'entities' && resultInfo.entities && resultInfo.entities.length > 0) {
       const entityIds = resultInfo.entities.map(e => e.id);
@@ -113,7 +128,13 @@ export default function App() {
     setFilteredGraph(null); // Clear entity filter
     setLeftPaneTab('papers'); // Return to papers tab
     setSelectedPaperId(null); // Clear selected paper
-    await graphData.fetchGraph(); // Fetch fresh graph data
+    toast.info('Refreshing graph data...');
+    try {
+      await graphData.fetchGraph(); // Fetch fresh graph data
+      toast.success('Graph data refreshed successfully');
+    } catch (error) {
+      toast.error('Failed to refresh graph data');
+    }
   };
 
   useEffect(() => {
@@ -130,6 +151,8 @@ export default function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
       />
+
+      <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
 
       <Modal
         isOpen={showErrorModal}
@@ -149,16 +172,18 @@ export default function App() {
           <div className="profile-divider"></div>
           <div className="profile-info">
             <div className="profile-field">
-              <span className="profile-label">👤 Name</span>
-              <span className="profile-value">Demo User</span>
+              <span className="profile-label">👤 Username</span>
+              <span className="profile-value">{user?.username || 'N/A'}</span>
             </div>
             <div className="profile-field">
               <span className="profile-label">📧 Email</span>
-              <span className="profile-value">demo@example.com</span>
+              <span className="profile-value">{user?.email || 'N/A'}</span>
             </div>
             <div className="profile-field">
-              <span className="profile-label">🔐 Status</span>
-              <span className="profile-value status-active">Active</span>
+              <span className="profile-label">🔐 Role</span>
+              <span className={`profile-value status-active role-${user?.role || 'user'}`}>
+                {user?.role ? user.role.toUpperCase() : 'USER'}
+              </span>
             </div>
           </div>
           <div className="profile-divider"></div>
@@ -179,18 +204,26 @@ export default function App() {
           {!graphData.error ? (
             <>
               <div className="pane-tabs">
-                <button 
+                <button
                   className={`pane-tab ${leftPaneTab === 'papers' ? 'active' : ''}`}
                   onClick={() => setLeftPaneTab('papers')}
                 >
                   📄 Papers
                 </button>
-                <button 
+                <button
                   className={`pane-tab ${leftPaneTab === 'search' ? 'active' : ''}`}
                   onClick={() => setLeftPaneTab('search')}
                 >
                   🔍 Search
                 </button>
+                {isAdmin() && (
+                  <button
+                    className={`pane-tab ${leftPaneTab === 'admin' ? 'active' : ''}`}
+                    onClick={() => setLeftPaneTab('admin')}
+                  >
+                    👥 Admin
+                  </button>
+                )}
               </div>
 
               {leftPaneTab === 'papers' && (
@@ -224,10 +257,12 @@ export default function App() {
                     </button>
                     {showUpload && (
                       <UploadForm
-                        onProcessed={(nodes, edges) =>
-                          graphData.setGraph({ nodes, edges })
-                        }
+                        onProcessed={(nodes, edges) => {
+                          graphData.setGraph({ nodes, edges });
+                          toast.success(`Graph updated with ${nodes.length} nodes and ${edges.length} edges`);
+                        }}
                         apiBase={API_BASE}
+                        toast={toast}
                       />
                     )}
                   </div>
@@ -240,7 +275,15 @@ export default function App() {
                     onSearchResults={handleSearchResults}
                     apiBase={API_BASE}
                     graphData={graphData.graph}
+                    toast={toast}
+                    searchResults={searchResults}
                   />
+                </div>
+              )}
+
+              {leftPaneTab === 'admin' && !isAdmin() && (
+                <div className="pane-content admin-pane-content">
+                  <AdminDashboard apiBase={API_BASE} toast={toast} />
                 </div>
               )}
             </>

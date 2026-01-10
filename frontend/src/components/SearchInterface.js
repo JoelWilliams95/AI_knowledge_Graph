@@ -157,7 +157,11 @@ export default function SearchInterface({ onSearchResults, apiBase, graphData })
       }
     } catch (error) {
       console.error('Search failed:', error);
-      alert('Search failed. Please try again.');
+      if (toast) {
+        toast.error('Search failed. Please try again.');
+      } else {
+        alert('Search failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

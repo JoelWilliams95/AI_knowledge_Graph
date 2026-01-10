@@ -21,3 +21,7 @@ def decode_access_token(token: str):
         return None
     except jwt.InvalidTokenError:
         return None
+
+def get_current_user_role(payload: dict) -> str:
+    """Extract user role from JWT payload"""
+    return payload.get("role", "user")
