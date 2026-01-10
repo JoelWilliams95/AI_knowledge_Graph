@@ -1,0 +1,72 @@
+.admin-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--background);
+  color: var(--text);
+}
+
+.admin-page-header {
+  background: var(--surface-light);
+  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-header-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+}
+
+.back-button:hover {
+  background: var(--overlay-light);
+}
+
+.admin-page-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.admin-page-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.admin-page-main > .admin-dashboard {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Scrollbar styling */
+.admin-page-main::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-page-main::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.admin-page-main::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+.admin-page-main::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

@@ -183,6 +183,22 @@ body, #root {
   cursor: not-allowed;
 }
 
+/* Admin button */
+.admin-btn { 
+  background: transparent; 
+  border: 1px solid var(--border); 
+  color: var(--text); 
+  font-size: 0.95rem; 
+  cursor: pointer; 
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.admin-btn:hover { background: var(--overlay-light); }
+
 .info-panel { font-family: monospace; font-size: 13px; }
 .error-message { background: var(--overlay-light); padding: 8px 12px; margin-top: 8px; border-radius: 4px; font-size: 14px; color: var(--text); border: 1px solid var(--border); }
 .backend-status { margin-top: 20px; padding: 12px; background: var(--panel-bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); }

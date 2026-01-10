@@ -9,6 +9,10 @@ export default function AdminDashboard({ apiBase = API_URL, toast }) {
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  const [filterRole, setFilterRole] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('created_at'); // 'created_at', 'email', 'role'
+  const [sortOrder, setSortOrder] = useState('desc'); // 'asc', 'desc'
   
   // Form state
   const [formData, setFormData] = useState({
@@ -190,8 +194,120 @@ export default function AdminDashboard({ apiBase = API_URL, toast }) {
     setFormData({ email: '', username: '', password: '', confirmPassword: '', role: 'user' });
   };
 
+  // Calculate statistics
+  const stats = {
+    total: users.length,
+    admins: users.filter(u => u.role === 'admin').length,
+    regularUsers: users.filter(u => u.role === 'user').length,
+    recentlyAdded: users.filter(u => {
+      const createdDate = new Date(u.created_at);
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      return createdDate > sevenDaysAgo;
+    }).length
+  };
+
+  // Filter and sort users
+  const filteredUsers = users
+    .filter(user => {
+      const matchesRole = filterRole === 'all' || user.role === filterRole;
+      const matchesSearch = 
+        user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()));
+      return matchesRole && matchesSearch;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch(sortBy) {
+        case 'email':
+          comparison = a.email.localeCompare(b.email);
+          break;
+        case 'role':
+          comparison = a.role.localeCompare(b.role);
+          break;
+        case 'created_at':
+        default:
+          comparison = new Date(b.created_at) - new Date(a.created_at);
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
+  // Get role distribution for visual indicator
+  const getRoleDistribution = () => {
+    const total = users.length;
+    if (total === 0) return { adminPercent: 0, userPercent: 0 };
+    return {
+      adminPercent: Math.round((stats.admins / total) * 100),
+      userPercent: Math.round((stats.regularUsers / total) * 100)
+    };
+  };
+
+  const roleDistribution = getRoleDistribution();
+
+
   return (
     <div className="admin-dashboard">
+      {/* Dashboard Statistics */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <div className="stat-icon">👥</div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.total}</div>
+            <div className="stat-label">Total Users</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">👑</div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.admins}</div>
+            <div className="stat-label">Administrators</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">📋</div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.regularUsers}</div>
+            <div className="stat-label">Regular Users</div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-icon">✨</div>
+          <div className="stat-content">
+            <div className="stat-value">{stats.recentlyAdded}</div>
+            <div className="stat-label">Added This Week</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Role Distribution Visual */}
+      <div className="role-distribution-card">
+        <h3>👤 Role Distribution</h3>
+        <div className="distribution-bars">
+          <div className="distribution-item">
+            <div className="distribution-label">Admins</div>
+            <div className="distribution-bar">
+              <div 
+                className="distribution-fill admin-fill" 
+                style={{ width: `${roleDistribution.adminPercent}%` }}
+              ></div>
+            </div>
+            <div className="distribution-percent">{roleDistribution.adminPercent}%</div>
+          </div>
+          <div className="distribution-item">
+            <div className="distribution-label">Users</div>
+            <div className="distribution-bar">
+              <div 
+                className="distribution-fill user-fill" 
+                style={{ width: `${roleDistribution.userPercent}%` }}
+              ></div>
+            </div>
+            <div className="distribution-percent">{roleDistribution.userPercent}%</div>
+          </div>
+        </div>
+      </div>
+
       <div className="admin-header">
         <h2>👥 User Management</h2>
         <button 
@@ -289,17 +405,71 @@ export default function AdminDashboard({ apiBase = API_URL, toast }) {
       {/* Users List */}
       <div className="users-list-card">
         <div className="users-list-header">
-          <h3>All Users ({users.length})</h3>
+          <h3>All Users ({filteredUsers.length} of {users.length})</h3>
           <button className="btn-secondary" onClick={fetchUsers} disabled={loading}>
             {loading ? '🔄 Loading...' : '🔄 Refresh'}
           </button>
         </div>
 
+        {/* Filters and Search */}
+        <div className="filters-section">
+          <div className="search-box">
+            <input
+              type="text"
+              placeholder="🔍 Search by email or username..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="search-input"
+            />
+          </div>
+
+          <div className="filters-controls">
+            <div className="filter-group">
+              <label>Filter by Role:</label>
+              <select 
+                value={filterRole}
+                onChange={(e) => setFilterRole(e.target.value)}
+                className="filter-select"
+              >
+                <option value="all">All Roles</option>
+                <option value="admin">Admins Only</option>
+                <option value="user">Users Only</option>
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Sort by:</label>
+              <select 
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="filter-select"
+              >
+                <option value="created_at">Created Date</option>
+                <option value="email">Email</option>
+                <option value="role">Role</option>
+              </select>
+            </div>
+
+            <button
+              className={`sort-order-btn ${sortOrder === 'asc' ? 'asc' : 'desc'}`}
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+            >
+              {sortOrder === 'asc' ? '↑ Ascending' : '↓ Descending'}
+            </button>
+          </div>
+        </div>
+
         {loading ? (
           <div className="loading-state">Loading users...</div>
-        ) : users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <div className="empty-state">
-            <p>No users found. Create the first user to get started.</p>
+            <p>
+              {searchTerm || filterRole !== 'all' 
+                ? 'No users match your filters.' 
+                : 'No users found. Create the first user to get started.'
+              }
+            </p>
           </div>
         ) : (
           <div className="users-table-container">
@@ -315,7 +485,7 @@ export default function AdminDashboard({ apiBase = API_URL, toast }) {
                 </tr>
               </thead>
               <tbody>
-                {users.map((user) => (
+                {filteredUsers.map((user) => (
                   <tr key={user.id} className={user.role === 'admin' ? 'admin-row' : ''}>
                     <td>{user.id}</td>
                     <td>{user.email}</td>

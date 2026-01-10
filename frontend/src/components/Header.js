@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
+import { useCallback } from 'react';
 
 const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { logout } = useAuth();
+  const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleClickOutside = (e) => {
@@ -80,6 +81,12 @@ const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme
           <button className="refresh-btn" onClick={(e) => { e.stopPropagation(); handleRefresh(); }} title="Refresh data and reset graph" disabled={isRefreshing}>
             {isRefreshing ? '⟳ Refreshing...' : '🔄 Refresh Data'}
           </button>
+
+          {isAdmin() && (
+            <button className="admin-btn" onClick={(e) => { e.stopPropagation(); navigate('/admin'); }} title="Go to admin panel">
+              👤 Admin
+            </button>
+          )}
 
           <button className="profile-btn" onClick={(e) => {
             e.stopPropagation();

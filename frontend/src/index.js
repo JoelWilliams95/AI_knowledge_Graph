@@ -5,6 +5,7 @@ import App from "./App";
 import LandingPage from "./pages/LandingPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import AdminPage from "./pages/AdminPage";
 import { AuthProvider } from "./services/AuthContext";
 import ProtectedRoute from "./services/ProtectedRoute";
 import "./styles.css";
@@ -32,6 +33,15 @@ root.render(
           element={
             <ProtectedRoute>
               <App />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminPage />
             </ProtectedRoute>
           }
         />

@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import UploadForm from './components/UploadForm';
 import SearchInterface from './components/SearchInterface';
-import AdminDashboard from './components/AdminDashboard';
 import GraphViewer from './components/GraphViewer';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -26,7 +25,7 @@ export default function App() {
   const [papers, setPapers] = useState([]);
   const [selectedPaperId, setSelectedPaperId] = useState(null);
   const [paperLoading, setPaperLoading] = useState(false);
-  const [leftPaneTab, setLeftPaneTab] = useState('papers'); // 'papers', 'search', or 'admin'
+  const [leftPaneTab, setLeftPaneTab] = useState('papers'); // 'papers' or 'search'
   const [rightPaneTab, setRightPaneTab] = useState('details'); // 'details' or 'info'
   const [searchResults, setSearchResults] = useState(null);
   const [filteredGraph, setFilteredGraph] = useState(null);
@@ -216,14 +215,6 @@ export default function App() {
                 >
                   🔍 Search
                 </button>
-                {isAdmin() && (
-                  <button
-                    className={`pane-tab ${leftPaneTab === 'admin' ? 'active' : ''}`}
-                    onClick={() => setLeftPaneTab('admin')}
-                  >
-                    👥 Admin
-                  </button>
-                )}
               </div>
 
               {leftPaneTab === 'papers' && (
@@ -280,12 +271,6 @@ export default function App() {
                   />
                 </div>
               )}
-
-              {leftPaneTab === 'admin' && isAdmin() && (
-                <div className="pane-content admin-pane-content">
-                  <AdminDashboard apiBase={API_BASE} toast={toast} />
-                </div>
-              )}
             </>
           ) : (
             <div className="backend-status">
@@ -314,6 +299,7 @@ uvicorn app.main:app --reload`}
               graph={filteredGraph || graphData.graph}
               onSelectNode={(n) => setSelected(n)}
               apiBase={API_BASE}
+              theme={theme}
             />
           )}
         </section>
