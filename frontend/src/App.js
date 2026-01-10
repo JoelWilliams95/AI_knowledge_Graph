@@ -281,7 +281,7 @@ export default function App() {
                 </div>
               )}
 
-              {leftPaneTab === 'admin' && !isAdmin() && (
+              {leftPaneTab === 'admin' && isAdmin() && (
                 <div className="pane-content admin-pane-content">
                   <AdminDashboard apiBase={API_BASE} toast={toast} />
                 </div>
