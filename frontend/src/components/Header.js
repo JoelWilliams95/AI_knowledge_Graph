@@ -3,24 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../services/AuthContext';
 import { useCallback } from 'react';
 
-const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme }) => {
-  const [showSettings, setShowSettings] = useState(false);
+const Header = ({ onRefresh, onOpenProfile, theme, onToggleTheme }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { logout, isAdmin } = useAuth();
   const navigate = useNavigate();
-
-  const handleClickOutside = (e) => {
-    if (!e.target.closest('.header-actions')) {
-      setShowSettings(false);
-    }
-  };
-
-  useEffect(() => {
-    if (showSettings) {
-      document.addEventListener('click', handleClickOutside);
-    }
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, [showSettings]);
 
   const handleHomeClick = () => {
     navigate('/');
@@ -30,13 +16,8 @@ const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme
     logout();
   };
 
-  const handleSettings = () => {
-    setShowSettings(false);
-    if (onOpenSettings) onOpenSettings();
-  };
 
   const handleProfile = () => {
-    setShowSettings(false);
     if (onOpenProfile) onOpenProfile();
   };
 
@@ -90,25 +71,18 @@ const Header = ({ onRefresh, onOpenProfile, onOpenSettings, theme, onToggleTheme
 
           <button className="profile-btn" onClick={(e) => {
             e.stopPropagation();
-            setShowSettings(!showSettings);
-          }}>
+            handleProfile();
+          }} title="View Profile">
             <span className="btn-icon">👤</span>
             <span>Profile</span>
           </button>
-          {showSettings && (
-            <div className="profile-dropdown">
-              <button onClick={handleSettings} className="dropdown-item">
-                ⚙️ Settings
-              </button>
-              <button onClick={handleProfile} className="dropdown-item">
-                👤 Profile
-              </button>
-              <div className="dropdown-divider"></div>
-              <button onClick={handleLogout} className="dropdown-item danger">
-                🚪 Sign Out
-              </button>
-            </div>
-          )}
+
+          <button className="logout-btn" onClick={(e) => {
+            e.stopPropagation();
+            handleLogout();
+          }} title="Sign Out">
+            <span className="btn-icon">↗️</span>
+          </button>
         </div>
       </div>
     </header>

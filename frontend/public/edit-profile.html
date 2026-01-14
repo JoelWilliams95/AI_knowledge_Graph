@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <title>Edit Profile - Research Knowledge Graph</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #e6eef8;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #334155;
+            border-top: 3px solid #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 1.1rem;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="loading">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Loading Edit Profile...</div>
+        </div>
+    </div>
+
+    <script>
+        // Simple script to load the React app for edit profile
+        // This will be replaced with the actual build process
+        const loadEditProfile = async () => {
+            try {
+                // Check if user is authenticated
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    document.getElementById('root').innerHTML = `
+                        <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; gap: 20px;">
+                            <h2 style="color: #ef4444;">Access Denied</h2>
+                            <p style="color: #94a3b8;">You must be logged in to edit your profile.</p>
+                            <button onclick="window.close()" style="padding: 10px 20px; background: #60a5fa; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // For now, show a placeholder until the build process is set up
+                document.getElementById('root').innerHTML = `
+                    <div style="padding: 40px; max-width: 800px; margin: 0 auto;">
+                        <h1 style="color: #e6eef8; margin-bottom: 20px;">Edit Profile</h1>
+                        <div style="background: #1e293b; padding: 30px; border-radius: 12px; border: 1px solid #334155;">
+                            <p style="color: #94a3b8; margin-bottom: 20px;">
+                                This feature is currently under development. The full edit profile functionality will be available soon.
+                            </p>
+                            <div style="display: flex; gap: 10px;">
+                                <button onclick="window.close()" style="padding: 12px 24px; background: #60a5fa; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                    Close Tab
+                                </button>
+                                <button onclick="window.location.href='${window.location.origin}'" style="padding: 12px 24px; background: #374151; color: #e6eef8; border: 1px solid #4b5563; border-radius: 6px; cursor: pointer;">
+                                    Back to Main App
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error('Failed to load edit profile:', error);
+                document.getElementById('root').innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; flex-direction: column; gap: 20px;">
+                        <h2 style="color: #ef4444;">Error</h2>
+                        <p style="color: #94a3b8;">Failed to load the edit profile page.</p>
+                        <button onclick="window.close()" style="padding: 10px 20px; background: #60a5fa; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
+                    </div>
+                `;
+            }
+        };
+
+        // Load the edit profile page
+        loadEditProfile();
+    </script>
+</body>
+</html>

@@ -193,7 +193,17 @@ export default function App() {
             >
               Close
             </button>
-            <button className="profile-btn-primary">Edit Profile</button>
+            <button
+              className="profile-btn-primary"
+              onClick={() => {
+                // Open edit profile in new tab
+                const editProfileUrl = `${window.location.origin}/edit-profile`;
+                window.open(editProfileUrl, '_blank', 'width=900,height=700,resizable=yes,scrollbars=yes');
+                setShowProfileModal(false);
+              }}
+            >
+              Edit Profile
+            </button>
           </div>
         </div>
       </Modal>

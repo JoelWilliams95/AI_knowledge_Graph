@@ -29,7 +29,7 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
       textPrimary: '#f8fafc',
       textSecondary: '#cbd5e1',
       textBg: '#1e293b',
-      highlightGlow: '#fbbf24'
+        // subtle blue to match dark background
     },
     light: {
       pdfNode: '#f59e0b',        // amber (darker for light mode)
@@ -41,7 +41,7 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
       textPrimary: '#1e293b',
       textSecondary: '#475569',
       textBg: '#f1f5f9',
-      highlightGlow: '#f59e0b'
+      highlightGlow: '#3b82f6'   // subtle blue to match light background
     }
   };
 
@@ -79,62 +79,89 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
 
   const style = [
     // PDF Nodes (center nodes)
-    { 
-      selector: 'node[isPdf]', 
-      style: { 
-        'label': 'data(label)', 
-        'width': 50, 
-        'height': 50, 
-        'background-color': currentColors.pdfNode, 
+    {
+      selector: 'node[isPdf]',
+      style: {
+        'label': 'data(label)',
+        'width': 80,
+        'height': 80,
+        'background-color': currentColors.pdfNode,
         'color': '#000',
-        'text-valign': 'center', 
+        'text-valign': 'center',
         'text-halign': 'center',
-        'font-size': '11px',
+        'font-size': '12px',
         'font-weight': '600',
         'text-wrap': 'wrap',
-        'text-max-width': '80px',
+        'text-max-width': '68px',
+        'text-overflow-wrap': 'anywhere',
+        'text-justification': 'center',
+        'text-margin-x': '3px',
+        'text-margin-y': '3px',
         'border-width': 2,
         'border-color': currentColors.pdfNode,
         'box-shadow': `0 0 10px ${currentColors.pdfNode}40`
-      } 
+      }
     },
     // Regular Entity Nodes
-    { 
-      selector: 'node:not([isPdf])', 
-      style: { 
-        'label': 'data(label)', 
-        'width': 35, 
-        'height': 35, 
-        'background-color': currentColors.entityNode, 
-        'color': currentColors.textPrimary, 
-        'text-valign': 'center', 
+    {
+      selector: 'node:not([isPdf])',
+      style: {
+        'label': 'data(label)',
+        'width': 60,
+        'height': 60,
+        'background-color': currentColors.entityNode,
+        'color': currentColors.textPrimary,
+        'text-valign': 'center',
         'text-halign': 'center',
         'font-size': '11px',
         'text-wrap': 'wrap',
-        'text-max-width': '70px'
-      } 
+        'text-max-width': '48px',
+        'text-overflow-wrap': 'anywhere',
+        'text-justification': 'center',
+        'text-margin-x': '2px',
+        'text-margin-y': '2px'
+      }
     },
     // Selected Node Highlight
     {
       selector: 'node:selected',
       style: {
         'background-color': currentColors.selectedNode,
-        'border-width': 3,
-        'border-color': currentColors.highlightGlow,
-        'box-shadow': `0 0 15px ${currentColors.highlightGlow}80`,
-        'width': 50,
-        'height': 50,
+        'width': function(ele) {
+          // Make selected nodes larger based on their original type
+          return ele.data('isPdf') ? 100 : 75;
+        },
+        'height': function(ele) {
+          // Make selected nodes larger based on their original type
+          return ele.data('isPdf') ? 100 : 75;
+        },
+        'font-size': '14px',
+        'font-weight': '0',
+        'text-max-width': function(ele) {
+          // Ensure text stays within node boundaries with padding
+          return ele.data('isPdf') ? '84px' : '59px';
+        },
+        'text-margin-x': function(ele) {
+          // Add padding from node edges
+          return ele.data('isPdf') ? '4px' : '3px';
+        },
+        'text-margin-y': function(ele) {
+          // Add padding from node edges
+          return ele.data('isPdf') ? '4px' : '3px';
+        },
         'color': '#000',
         'z-index': 10
       }
     },
     // Node on hover
+    
+    // Node on active (dragging)
     {
       selector: 'node:active',
       style: {
-        'overlay-opacity': 0.3,
+        'overlay-opacity': 0.4,
         'overlay-color': currentColors.highlightGlow,
-        'overlay-padding': 10
+        'overlay-padding': 15
       }
     },
     // Regular Edges
@@ -314,6 +341,67 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
     }
   };
 
+  // Zoom control functions
+  const handleZoomIn = () => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() * 1.2);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (cyRef.current) {
+      cyRef.current.zoom(cyRef.current.zoom() * 0.8);
+    }
+  };
+
+  const handleFitToView = () => {
+    if (cyRef.current) {
+      cyRef.current.fit(undefined, 50); // Fit all elements with 50px padding
+    }
+  };
+
+
+  // Keyboard shortcuts for zoom and controls
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check if user is typing in an input/textarea - ignore shortcuts
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) {
+        return;
+      }
+
+      const cy = cyRef.current;
+      if (!cy) return;
+
+      // Zoom in: Ctrl/Cmd + Plus/Equals
+      if ((e.ctrlKey || e.metaKey) && (e.key === '+' || e.key === '=')) {
+        e.preventDefault();
+        cy.zoom(cy.zoom() * 1.2);
+      }
+      // Zoom out: Ctrl/Cmd + Minus
+      else if ((e.ctrlKey || e.metaKey) && e.key === '-') {
+        e.preventDefault();
+        cy.zoom(cy.zoom() * 0.8);
+      }
+      // Fit to view: F key
+      else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        cy.fit(undefined, 50);
+      }
+      // Clear selection: Escape
+      else if (e.key === 'Escape') {
+        e.preventDefault();
+        // Clear selection
+        setSelectedNodeId(null);
+        cy.elements().removeClass('highlighted faded');
+        cy.nodes().unselect();
+        onSelectNode(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onSelectNode]); // Empty deps - cyRef is stable and we check it inside
+
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <CytoscapeComponent
@@ -321,15 +409,15 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
         style={{ width: '100%', height: '100%' }}
         cy={(cy) => {
           cyRef.current = cy;
-          
+
           // Set user interaction options
           cy.userZoomingEnabled(true);
           cy.userPanningEnabled(true);
           cy.boxSelectionEnabled(false);
-          
+
           // Make sure all nodes are grabbable
           cy.nodes().grabify();
-          
+
           // Add event listeners
           cy.on('tap', 'node', handleNodeTap);
           cy.on('tap', handleCanvasTap);
@@ -342,6 +430,50 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
         autoungrabify={false} // Critical: allows nodes to be grabbed
         autounselectify={false} // Allows selection
       />
+
+      {/* Graph Control Panel */}
+      <div className="graph-controls-panel">
+        <button
+          className="graph-control-btn"
+          onClick={handleZoomIn}
+          title="Zoom In (Ctrl/Cmd + Plus)"
+          aria-label="Zoom In"
+        >
+          <span className="control-icon">+</span>
+        </button>
+        <button
+          className="graph-control-btn"
+          onClick={handleZoomOut}
+          title="Zoom Out (Ctrl/Cmd + Minus)"
+          aria-label="Zoom Out"
+        >
+          <span className="control-icon">−</span>
+        </button>
+        <button
+          className="graph-control-btn"
+          onClick={handleFitToView}
+          title="Fit to View (F key)"
+          aria-label="Fit to View"
+        >
+          <span className="control-icon">⛶</span>
+        </button>
+        <button
+          className="graph-control-btn"
+          onClick={() => {
+            // Clear selection
+            setSelectedNodeId(null);
+            if (cyRef.current) {
+              cyRef.current.elements().removeClass('highlighted faded');
+              cyRef.current.nodes().unselect();
+            }
+            onSelectNode(null);
+          }}
+          title="Clear Selection (Escape)"
+          aria-label="Clear Selection"
+        >
+          <span className="control-icon">✕</span>
+        </button>
+      </div>
     </div>
   );
 }
