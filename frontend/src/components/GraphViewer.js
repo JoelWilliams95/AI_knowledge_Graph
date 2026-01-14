@@ -5,8 +5,10 @@ import axios from 'axios';
 
 export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dark' }) {
   const cyRef = useRef(null);
+  const containerRef = useRef(null);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const lastPosRef = useRef(null);
 
   useEffect(() => {
@@ -360,6 +362,34 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
     }
   };
 
+  const handleFullscreen = () => {
+    if (!isFullscreen) {
+      // Request fullscreen
+      if (containerRef.current) {
+        if (containerRef.current.requestFullscreen) {
+          containerRef.current.requestFullscreen();
+        } else if (containerRef.current.webkitRequestFullscreen) {
+          containerRef.current.webkitRequestFullscreen();
+        } else if (containerRef.current.mozRequestFullScreen) {
+          containerRef.current.mozRequestFullScreen();
+        } else if (containerRef.current.msRequestFullscreen) {
+          containerRef.current.msRequestFullscreen();
+        }
+      }
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) {
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) {
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) {
+        document.msExitFullscreen();
+      }
+    }
+  };
+
 
   // Keyboard shortcuts for zoom and controls
   useEffect(() => {
@@ -387,6 +417,11 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
         e.preventDefault();
         cy.fit(undefined, 50);
       }
+      // Fullscreen: H key
+      else if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        handleFullscreen();
+      }
       // Clear selection: Escape
       else if (e.key === 'Escape') {
         e.preventDefault();
@@ -402,8 +437,37 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onSelectNode]); // Empty deps - cyRef is stable and we check it inside
 
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.mozFullScreenElement ||
+        document.msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, []);
+
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div 
+      ref={containerRef}
+      style={{ width: '100%', height: '100%', position: 'relative' }}
+      className={isFullscreen ? 'graph-viewer-fullscreen' : ''}
+    >
       <CytoscapeComponent
         elements={elements}
         style={{ width: '100%', height: '100%' }}
@@ -472,6 +536,14 @@ export default function GraphViewer({ graph, onSelectNode, apiBase, theme = 'dar
           aria-label="Clear Selection"
         >
           <span className="control-icon">✕</span>
+        </button>
+        <button
+          className="graph-control-btn"
+          onClick={handleFullscreen}
+          title={isFullscreen ? "Exit Fullscreen (H key)" : "Fullscreen (H key)"}
+          aria-label={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+        >
+          <span className="control-icon">{isFullscreen ? '⛶' : '□'}</span>
         </button>
       </div>
     </div>
